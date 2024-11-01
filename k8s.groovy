@@ -1,3 +1,20 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: my-service-account
+imagePullSecrets:
+- name: my-registry-secret
+
+podTemplate {
+    containers {
+        containerTemplate(name: 'jnlp', image: 'jenkins/jnlp-slave') {
+        }
+    }
+    spec {
+        serviceAccountName: 'my-jenkins-agent-sa'
+    }
+}
+
 podTemplate(name: 'base-template', containers: [
     containerTemplate(name: 'jnlp', image: 'jenkins/jnlp-slave:alpine', args: '${computer.jnlpmac} ${computer.name}'),
     containerTemplate(name: 'utility', image: 'alpine', command: 'cat', ttyEnabled: true)
