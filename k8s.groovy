@@ -362,3 +362,71 @@ class BasePodTemplate {
     }
 }
 
+
+// vars/customAgent.groovy
+def call(Closure body) {
+    node {
+        echo "Setting up custom agent"
+        // Custom setup logic here
+        body()
+        echo "Cleaning up custom agent"
+    }
+}
+
+@Library('your-shared-library') _
+
+pipeline {
+    agent {
+        customAgent {
+            // Agent-specific setup can be placed here if needed
+        }
+    }
+
+    stages {
+        stage('Example') {
+            steps {
+                echo "Running on custom agent"
+                sh 'java --version'
+            }
+        }
+    }
+}
+
+
+// vars/customK8sAgent.groovy
+def call(String yamlSpec, Closure body) {
+    podTemplate(yaml: yamlSpec) {
+        node(POD_LABEL) {
+            echo "Setting up custom Kubernetes pod"
+            body()
+            echo "Cleaning up custom Kubernetes pod"
+        }
+    }
+}
+
+@Library('your-shared-library') _
+
+pipeline {
+    agent {
+        customK8sAgent '''
+apiVersion: v1
+kind: Pod
+spec:
+  containers:
+  - name: openjdk
+    image: openjdk:11
+    env:
+    - name: TEST
+      value: "2"
+'''
+    }
+
+    stages {
+        stage('Example') {
+            steps {
+                echo "Running on custom Kubernetes pod"
+                sh 'java --version'
+            }
+        }
+    }
+}
