@@ -45,6 +45,11 @@ import requests
 response = requests.get("https://example.com", verify="/etc/ssl/certs/ca-certificates.crt")
 print(response.status_code)
 
+import requests
+import certifi
+
+response = requests.get("https://example.com", verify=certifi.where())
+
 
 export REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
 
@@ -58,4 +63,8 @@ print("Certifi CA Bundle: ", certifi.where())
 
 
 pip debug --verbose
+
+
+sudo keytool -importcert -keystore $JAVA_HOME/lib/security/cacerts -file /path/to/your/rootCA.pem -alias yourAlias
+
 
