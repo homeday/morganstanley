@@ -47,3 +47,15 @@ print(response.status_code)
 
 
 export REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
+
+
+import pip._vendor.requests as requests
+import certifi
+
+# Check the CA bundle location
+print("Requests CA Bundle: ", requests.certs.where())
+print("Certifi CA Bundle: ", certifi.where())
+
+
+pip debug --verbose
+
