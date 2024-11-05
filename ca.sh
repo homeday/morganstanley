@@ -67,4 +67,51 @@ pip debug --verbose
 
 sudo keytool -importcert -keystore $JAVA_HOME/lib/security/cacerts -file /path/to/your/rootCA.pem -alias yourAlias
 
+# Supported Formats
+# PEM (Privacy-Enhanced Mail):
 
+# Text-based format
+
+# Commonly uses .pem, .crt, .cer, or .key file extensions
+
+# Can contain multiple certificates and private keys
+
+# DER (Distinguished Encoding Rules):
+
+# Binary format
+
+# Commonly uses .der or .cer file extensions
+
+#openssl x509 -in rootCA.der -inform der -out rootCA.pem -outform pem
+
+
+# import pem ca
+sudo keytool -importcert -alias myrootca -file /path/to/rootCA.pem -keystore $JAVA_HOME/lib/security/cacerts -storepass changeit
+
+# import der ca
+sudo keytool -importcert -alias myrootca -file /path/to/rootCA.der -keystore $JAVA_HOME/lib/security/cacerts -storepass changeit -noprompt -storetype JKS
+
+openssl x509 -in /path/to/your/certificate.pem -text -noout
+
+openssl x509 -in /path/to/your/certificate.der -inform der -text -noout
+
+# Microsoft Edge:
+# Navigate to the Portal: Open the HTTPS portal in Edge.
+
+# View Certificate: Click on the padlock icon in the address bar, then click on "Certificate (Valid)".
+
+# Certificate Hierarchy: In the "Certificate" window, you'll see a hierarchy of certificates.
+
+# Select Root CA: Navigate to the top of the hierarchy to find the root CA certificate.
+
+# Details Tab: Switch to the "Details" tab.
+
+# Export Certificate: Click on "Copy to File..." and follow the wizard to export the certificate. Choose the appropriate format (usually PEM or DER).
+
+
+# Steps to Export in PEM Format:
+# When exporting the root CA from your browser, make sure to select the PEM format (usually offered as "Base-64 encoded" or similar options in the export dialog).
+
+# Once you have the root CA certificate in PEM format, you can proceed to import it into the Java trust store as previously discussed.
+
+# If you have any further questions or need more assistance, feel free to ask!
