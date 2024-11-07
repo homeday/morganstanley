@@ -1,0 +1,82 @@
+
+
+Step 1: Create the Service Account and Role
+oc create serviceaccount jenkins -n your-namespace
+
+oc create role jenkins-role --verb=create,delete --resource=pods -n your-namespace
+
+oc create rolebinding jenkins-role-binding --role=jenkins-role --serviceaccount=your-namespace:jenkins -n your-namespace
+
+Step 2: Create a Docker Registry Secret
+oc create secret docker-registry my-docker-secret \
+--docker-server=<your-docker-registry> \
+--docker-username=<your-username> \
+--docker-password=<your-password> \
+--docker-email=<your-email> \
+-n your-namespace
+
+oc secrets link jenkins my-docker-secret --for=pull -n your-namespace
+
+
+Step 3: Retrieve the Service Account Token
+oc sa get-token jenkins -n your-namespace
+
+
+Jenkins Configuration
+Add Service Account Token as Secret:
+
+Go to Manage Jenkins > Manage Credentials > Global credentials (unrestricted) > Add Credentials.
+
+Choose Secret text and paste the service account token.
+
+Give it an ID like jenkins-sa-token.
+
+Configure Kubernetes Cloud:
+
+Go to Manage Jenkins > Manage Nodes and Clouds > Configure Clouds.
+
+Add a new cloud and select Kubernetes.
+
+Fill in the Kubernetes API URL (e.g., https://kubernetes.default.svc).
+
+Use the credential ID jenkins-sa-token you just created.
+
+Under Pod Templates, define the pod template using the YAML configuration above.
+
+pipeline {
+    agent {
+        kubernetes {
+            yaml """
+            apiVersion: v1
+            kind: Pod
+            metadata:
+              name: jenkins-agent
+            spec:
+              serviceAccountName: jenkins
+              containers:
+              - name: jnlp
+                image: jenkins/inbound-agent:latest
+                args: ['$(JENKINS_SECRET)', '$(JENKINS_NAME)']
+                volumeMounts:
+                - name: docker-socket
+                  mountPath: /var/run/docker.sock
+                - name: docker-config
+                  mountPath: /root/.docker
+              volumes:
+              - name: docker-socket
+                hostPath:
+                  path: /var/run/docker.sock
+              - name: docker-config
+                secret:
+                  secretName: my-docker-secret
+            """
+        }
+    }
+    stages {
+        stage('Build') {
+            steps {
+                echo 'Building...'
+            }
+        }
+    }
+}
