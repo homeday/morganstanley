@@ -1,4 +1,4 @@
-
+https://github.com/jenkinsci/git-plugin/blob/018cb57f7e6c5fb03add5307f79aecbd757a1aca/src/main/java/hudson/plugins/git/util/DefaultBuildChooser.java#L251
 
 Step 1: Create the Service Account and Role
 oc create serviceaccount jenkins -n your-namespace
