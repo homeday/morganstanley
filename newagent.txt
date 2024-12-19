@@ -1,0 +1,25 @@
+{
+  "name": "new-node-name",
+  "nodeDescription": "Description of the new node",
+  "numExecutors": 2,
+  "remoteFS": "/home/jenkins",
+  "labelString": "linux",
+  "mode": "NORMAL",
+  "type": "hudson.slaves.DumbSlave",
+  "retentionStrategy": {
+    "stapler-class": "hudson.slaves.RetentionStrategy$Always"
+  },
+  "launcher": {
+    "stapler-class": "hudson.slaves.JNLPLauncher"
+  },
+  "nodeProperties": [
+    {
+      "stapler-class": "com.synopsys.arc.jenkinsci.plugins.jobrestrictions.nodes.JobRestrictionProperty",
+      "jobRestriction": {
+        "class": "com.synopsys.arc.jenkinsci.plugins.jobrestrictions.restrictions.job.RegexNameRestriction",
+        "regexExpression": "456",
+        "checkShortName": false
+      }
+    }
+  ]
+}
