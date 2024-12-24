@@ -43,3 +43,50 @@ def call(Map config = [:]) {
     }
     return new KubernetesDeclarativeAgentScript(agent)
 }
+
+
+@Library('your-library-name') _
+pipeline {
+    agent any
+    stages {
+        stage('Python Stage') {
+            agent {
+                podAgent(nodetype: 'python', retries: 2)
+            }
+            steps {
+                sh 'python --version'
+            }
+        }
+        stage('Node.js Stage') {
+            agent {
+                podAgent(nodetype: 'nodejs', retries: 2)
+            }
+            steps {
+                sh 'node --version'
+            }
+        }
+    }
+}
+
+// vars/podAgent.groovy
+import org.csanchez.jenkins.plugins.kubernetes.pipeline.KubernetesDeclarativeAgent
+
+def call(Map config = [:]) {
+    def yamlFile
+    switch (config.nodetype) {
+        case 'python':
+            yamlFile = libraryResource 'podtemplates/python.yaml'
+            break
+        case 'nodejs':
+            yamlFile = libraryResource 'podtemplates/nodejs.yaml'
+            break
+        default:
+            error "Unknown nodetype: ${config.nodetype}"
+    }
+    def agent = new KubernetesDeclarativeAgent(yamlFile)
+    if (config.containsKey('retries')) {
+        agent.setRetries(config.retries)
+    }
+    return [$class: 'org.csanchez.jenkins.plugins.kubernetes.pipeline.KubernetesDeclarativeAgent', yaml: yamlFile, retries: config.retries ?: 0]
+}
+
