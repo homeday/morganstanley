@@ -35,3 +35,26 @@ pipeline {
         }
     }
 }
+
+
+import groovy.yaml.YamlSlurper
+import groovy.yaml.YamlBuilder
+
+def call(String agentType, String imageName) {
+    // Define the resource path for the YAML file
+    String yamlPath = "k8s/${agentType}.yaml"
+    def yamlFile = libraryResource(yamlPath)
+    
+    // Parse the YAML file
+    def yamlSlurper = new YamlSlurper()
+    def config = yamlSlurper.parseText(yamlFile)
+
+    // Replace the image name
+    config.spec.containers[0].image = imageName
+
+    // Convert the updated config back to YAML
+    def yamlBuilder = new YamlBuilder()
+    yamlBuilder config
+    return yamlBuilder.toString()
+}
+
