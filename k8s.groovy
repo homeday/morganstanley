@@ -238,7 +238,7 @@ pipeline {
     }
 }
 
-
+// not good
 pipeline {
     agent none
     stages {
