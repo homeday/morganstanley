@@ -112,3 +112,55 @@ node {
     echo "Outside SH: VAULT_TOKEN=${VAULT_TOKEN}"
   }
 }
+
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: my-certs
+type: Opaque
+data:
+  cert1.pem: <base64-encoded-cert1>
+  cert2.pem: <base64-encoded-cert2>
+  cert3.pem: <base64-encoded-cert3>
+
+
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-pod
+spec:
+  containers:
+  - name: my-container
+    image: my-image
+    volumeMounts:
+    - name: certs
+      mountPath: "/etc/certs"
+  volumes:
+  - name: certs
+    secret:
+      secretName: my-certs
+
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-pod
+spec:
+  containers:
+  - name: my-container1
+    image: my-image1
+    volumeMounts:
+    - name: certs
+      mountPath: "/etc/certs"
+  - name: my-container2
+    image: my-image2
+    volumeMounts:
+    - name: certs
+      mountPath: "/etc/certs"
+  volumes:
+  - name: certs
+    secret:
+      secretName: my-certs
+
