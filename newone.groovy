@@ -242,3 +242,25 @@ spec:
   - name: secret2
     secret:
       secretName: secret2
+
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-pod
+spec:
+  containers:
+  - name: my-container1
+    image: my-image1
+    volumeMounts:
+    - name: shared-volume
+      mountPath: "/etc/shared"
+  - name: my-container2
+    image: my-image2
+    volumeMounts:
+    - name: shared-volume
+      mountPath: "/etc/shared"
+  volumes:
+  - name: shared-volume
+    secret:
+      secretName: my-secret
