@@ -164,3 +164,81 @@ spec:
     secret:
       secretName: my-certs
 
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: my-config
+data:
+  config1.properties: |
+    key1=value1
+    key2=value2
+  config2.properties: |
+    keyA=valueA
+    keyB=valueB
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-pod
+spec:
+  containers:
+  - name: my-container1
+    image: my-image1
+    volumeMounts:
+    - name: config
+      mountPath: "/etc/config"
+  - name: my-container2
+    image: my-image2
+    volumeMounts:
+    - name: config
+      mountPath: "/etc/config"
+  volumes:
+  - name: config
+    configMap:
+      name: my-config
+
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: secret1
+type: Opaque
+data:
+  cert1.pem: <base64-encoded-cert1>
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: secret2
+type: Opaque
+data:
+  cert2.pem: <base64-encoded-cert2>
+
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-pod
+spec:
+  containers:
+  - name: my-container1
+    image: my-image1
+    volumeMounts:
+    - name: secret1
+      mountPath: "/etc/secret1"
+    - name: secret2
+      mountPath: "/etc/secret2"
+  - name: my-container2
+    image: my-image2
+    volumeMounts:
+    - name: secret1
+      mountPath: "/etc/secret1"
+    - name: secret2
+      mountPath: "/etc/secret2"
+  volumes:
+  - name: secret1
+    secret:
+      secretName: secret1
+  - name: secret2
+    secret:
+      secretName: secret2
