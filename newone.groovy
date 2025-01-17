@@ -264,3 +264,38 @@ spec:
   - name: shared-volume
     secret:
       secretName: my-secret
+
+
+#!/bin/bash
+
+# Default values
+default_arg="default_value"
+default_path="/default/path"
+
+# Initialize variables
+arg=$default_arg
+path=$default_path
+
+# Parse named arguments
+while [[ "$#" -gt 0 ]]; do
+    case $1 in
+        --arg) arg="$2"; shift ;;
+        --path) path="$2"; shift ;;
+        *) echo "Unknown parameter passed: $1"; exit 1 ;;
+    esac
+    shift
+done
+
+echo "Argument is: $arg"
+echo "Path is: $path"
+
+
+
+#!/bin/bash
+
+# Assign argument or use default path
+default_path="/default/path"
+path_arg=${1:-$default_path}
+
+echo "Path is: $path_arg"
+
