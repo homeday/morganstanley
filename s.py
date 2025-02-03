@@ -64,3 +64,58 @@ def proxy():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, ssl_context=('/path/to/server.crt', '/path/to/server.key'))
+
+
+
+
+import click
+
+@click.command()
+@click.option('--fields', '-f', help='Fields in the format key1=value1,key2=value2')
+def main(fields):
+    fields_dict = {}
+
+    if fields:
+        for field in fields.split(','):
+            if '=' in field:
+                key, value = field.split('=', 1)
+                fields_dict[key] = value
+            else:
+                click.echo(f"Invalid format for field: {field}")
+                return
+
+    click.echo("Parsed fields:")
+    for key, value in fields_dict.items():
+        click.echo(f'{key}: {value}')
+
+if __name__ == "__main__":
+    main()
+
+
+python your_script.py --fields name=John,age=30,city=LosAngeles
+
+
+import click
+
+@click.command()
+@click.option('--field', '-f', multiple=True, help='Field in the format key=value')
+def main(field):
+    fields_dict = {}
+
+    for f in field:
+        if '=' in f:
+            key, value = f.split('=', 1)
+            fields_dict[key] = value
+        else:
+            click.echo(f"Invalid format for field: {f}")
+            return
+
+    click.echo("Parsed fields:")
+    for key, value in fields_dict.items():
+        click.echo(f'{key}: {value}')
+
+if __name__ == "__main__":
+    main()
+
+
+python your_script.py --field name=John --field age=30 --field city=LosAngeles
