@@ -120,3 +120,5 @@ if __name__ == "__main__":
 
 # python your_script.py --field name=John --field age=30 --field city=LosAngeles
 # https://plugins.jenkins.io/hashicorp-vault-plugin/
+
+
