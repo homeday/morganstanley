@@ -92,7 +92,7 @@ if __name__ == "__main__":
     main()
 
 
-python your_script.py --fields name=John,age=30,city=LosAngeles
+# python your_script.py --fields name=John,age=30,city=LosAngeles
 
 
 import click
@@ -118,4 +118,5 @@ if __name__ == "__main__":
     main()
 
 
-python your_script.py --field name=John --field age=30 --field city=LosAngeles
+# python your_script.py --field name=John --field age=30 --field city=LosAngeles
+# https://plugins.jenkins.io/hashicorp-vault-plugin/
