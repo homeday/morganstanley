@@ -108,3 +108,54 @@ if ($response.ContentType -eq "application/json") {
 
 # openssl pkcs12 -export -out client.pfx -inkey client.key -in client.crt -certfile ca.crt
 # openssl pkcs12 -export -out client.pfx -inkey client.key -in client.crt -certfile ca.crt -passout pass:your_password
+
+
+$url = "https://example.com"
+$headers = @{
+    "HeaderName1" = "HeaderValue1"
+    "HeaderName2" = "HeaderValue2"
+}
+$pfxPath = "C:\path\to\client.pfx"
+$certPassword = "" # Empty password if no password is needed
+
+# Load the client certificate from the PFX file
+$cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2
+$cert.Import($pfxPath, $certPassword, [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::DefaultKeySet)
+
+# Make the HTTP request with mTLS
+$response = Invoke-WebRequest -Uri $url -UseDefaultCredentials -Headers $headers -Certificate $cert
+
+# Get the HTTP status code
+$statusCode = $response.StatusCode
+Write-Output "HTTP Status Code: $statusCode"
+
+# Function to get a nested property from a JSON object
+function Get-NestedProperty {
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject]$JsonObject,
+        [Parameter(Mandatory=$true)]
+        [string]$Path
+    )
+    $properties = $Path.Trim(':').Split('.')
+    $current = $JsonObject
+    foreach ($property in $properties) {
+        if ($null -ne $current) {
+            $current = $current.$property
+        } else {
+            return $null
+        }
+    }
+    return $current
+}
+
+# Check if the content is JSON and parse it
+if ($response.ContentType -eq "application/json") {
+    $jsonContent = $response.Content | ConvertFrom-Json
+    # Access a specific field from the JSON using a path similar to jq
+    $path = ":a.b"  # Example path
+    $specificField = Get-NestedProperty -JsonObject $jsonContent -Path $path
+    Write-Output "Specific Field: $specificField"
+} else {
+    Write-Output "Content is not JSON"
+}
