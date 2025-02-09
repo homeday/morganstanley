@@ -299,3 +299,31 @@ path_arg=${1:-$default_path}
 
 echo "Path is: $path_arg"
 
+
+
+pipeline {
+    agent any
+
+    stages {
+        stage('Capture HTTP Response') {
+            steps {
+                script {
+                    def responseContent = powershell(script: '''
+                        $url = "https://example.com/api"
+                        $response = Invoke-WebRequest -Uri $url -UseBasicParsing
+
+                        if ($response.StatusCode -ne 200) {
+                            Throw "HTTP request failed with status: $($response.StatusCode)"
+                        }
+
+                        # Only return the response content (Jenkins captures the output)
+                        Write-Output $response.Content
+                    ''', returnOutput: true)
+
+                    echo "Captured Response Content: ${responseContent}"
+                }
+            }
+        }
+    }
+}
+
