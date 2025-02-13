@@ -306,7 +306,8 @@ pipeline {
 
     stages {
         stage('Capture HTTP Response') {
-            steps {
+            steps {StatusCode
+            
                 script {
                     def responseContent = powershell(script: '''
                         $url = "https://example.com/api"
