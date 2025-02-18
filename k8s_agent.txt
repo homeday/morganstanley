@@ -80,3 +80,21 @@ pipeline {
         }
     }
 }
+
+
+We are currently conducting a review of Jenkins security and have two questions that need clarification:
+
+Jenkins Authentication: If we use Kerberos for authentication, what Identity Providers (IdPs) does IAM currently offer?
+
+CKS Support for Kerberos Accounts: Currently, CKS supports only one Kerberos account per namespace. What solutions are available to address this limitation?
+
+Regarding the first question, Jenkins supports various authentication methods, including Kerberos. To configure Kerberos authentication in Jenkins, you can use the Kerberos SSO Plugin, which authenticates users based on Kerberos ticket negotiation. As for the Identity Providers (IdPs) offered by your Identity and Access Management (IAM) system, it depends on the specific IAM service you are using. Common IdPs include Active Directory and LDAP. It's advisable to consult your IAM service documentation to determine its support for Kerberos.
+
+For the second question, if "CKS" refers to a specific Kubernetes service that restricts each namespace to a single Kerberos account, you might consider the following approaches:
+
+Namespace Management: Create separate namespaces for different teams or projects, each with its own Kerberos account. This approach aligns with Kubernetes' design, where service accounts are namespace-scoped.
+
+Role Binding: Utilize RoleBindings or ClusterRoleBindings to assign specific permissions to users or service accounts across namespaces. This method allows for more granular access control without being limited to one Kerberos account per namespace.
+
+The optimal solution depends on your specific environment and requirements. It's recommended to discuss these options with your system administrators or security team to determine the best course of action.
+
