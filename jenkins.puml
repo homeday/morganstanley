@@ -1,0 +1,29 @@
+@startuml
+title Jenkins HA with F5 Load Balancer
+
+actor User
+
+rectangle "F5 Load Balancer" {
+  node "Virtual Server" as VS
+}
+
+package "Jenkins Cluster" {
+  node "Jenkins Active" as Active
+  node "Jenkins Standby" as Standby
+}
+
+folder "NAS (jenkins_home)" as NAS
+
+User --> VS : Access Jenkins
+
+VS --> Active : HTTP request
+VS -[#red]> Active : Health Check (Login URL)
+
+Active -[#red]> Standby : Status Check Script
+Standby -[#red]> Active : Stop Jenkins if needed
+Standby -[#blue]> Standby : Start Jenkins if Active is Down
+
+Active -- NAS
+Standby -- NAS
+
+@enduml
