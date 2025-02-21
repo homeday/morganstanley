@@ -1,29 +1,52 @@
-@startuml
+@startuml Jenkins HA with F5 Load Balancer
 title Jenkins HA with F5 Load Balancer
 
 actor User
+node BYOA
 
-rectangle "F5 Load Balancer" {
-  node "Virtual Server" as VS
+rectangle "F5 Load Balancer" as F5 #MintCream;line:Orange;text:MidnightBlue {
+    node "Virtual Server" as VS #MintCream;line:Orange;text:MidnightBlue 
+    note right of VS 
+    - Two nodes are configured as a pool.  
+    - Active Node Priority: 100  
+    - Standby Node Priority: 0  
+        - Requests go to active node by default.  
+    - F5 performs health checks using Jenkins login URL.  
+    end note
 }
 
-package "Jenkins Cluster" {
-  node "Jenkins Active" as Active
-  node "Jenkins Standby" as Standby
+node "Jenkins Active Node" as Active #palegreen;line:green;text:green
+
+node "Jenkins Standby Node" as Standby #aliceblue;line:blue;line.dotted;text:blue {
+    rectangle service #aliceblue;line:blue;text:blue [
+        By default, the Jenkins service is stopped.   
+    ]
+    rectangle Script #aliceblue;line:blue;text:blue [
+        Run a script via crontab (or similar).  
+        - Checks active node status.  
+        - If down, starts Jenkins on standby (unless in maintenance).  
+        - Logs status for review.
+    ]
 }
 
-folder "NAS (jenkins_home)" as NAS
+note top of Standby
+After the active node recovers.
+And switch back, ensuring no jobs are in progress.  
+end note
 
-User --> VS : Access Jenkins
+folder "NAS (JENKINS_HOME)" as NAS #linen;line:navy;text:navy
 
-VS --> Active : HTTP request
-VS -[#red]> Active : Health Check (Login URL)
+User --> VS : Access with https/443
+BYOA --> VS : Connect with Tcp/7788
 
-Active -[#red]> Standby : Status Check Script
-Standby -[#red]> Active : Stop Jenkins if needed
-Standby -[#blue]> Standby : Start Jenkins if Active is Down
+VS --> Active #green;text:green : Https/443 and Tcp/7788\nrequest by default
+F5 --> Active #Orange;text:Orange : Health Check
+VS --> Standby #blue;line.dotted;text:blue : Https/443 and Tcp/7788 requests\nif active node is down
+F5 --> Standby #Orange;text:Orange : Health Check 
 
-Active -- NAS
-Standby -- NAS
+Script --> Active #blue;text:blue : Monitor Jenkins service status
+
+Active -- NAS #navy;text:navy : Read/Write
+Standby -- NAS #navy;text:navy : Read/Write
 
 @enduml
