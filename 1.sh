@@ -61,3 +61,55 @@ else
 fi
 
 echo "所有检查通过！"
+
+
+#!/bin/bash
+
+# Variables
+REMOTE_USER="your_username"
+REMOTE_HOST="your_remote_host"
+JENKINS_URL="http://your_remote_host:8080"  # Adjust the port if necessary
+
+# Function to check if the remote host is up
+check_host_up() {
+  echo "Pinging $REMOTE_HOST to check if it's up..."
+  if ping -c 1 -W 1 "$REMOTE_HOST" &> /dev/null; then
+    echo "$REMOTE_HOST is reachable."
+    return 0
+  else
+    echo "$REMOTE_HOST is not reachable."
+    return 1
+  fi
+}
+
+# Function to check Jenkins service status via SSH and systemctl
+check_jenkins_service() {
+  echo "Checking Jenkins service status on $REMOTE_HOST..."
+  ssh "${REMOTE_USER}@${REMOTE_HOST}" << EOF
+    if systemctl is-active --quiet jenkins; then
+      echo "Jenkins service is active."
+    else
+      echo "Jenkins service is not active."
+    fi
+EOF
+}
+
+# Function to perform an HTTP request to check Jenkins responsiveness
+check_jenkins_http() {
+  echo "Checking Jenkins HTTP response..."
+  HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$JENKINS_URL")
+
+  if [ "$HTTP_STATUS" -eq 200 ]; then
+    echo "Jenkins is responsive (HTTP 200 OK)."
+  else
+    echo "Jenkins is not responsive (HTTP status code: $HTTP_STATUS)."
+  fi
+}
+
+# Main script execution
+if check_host_up; then
+  check_jenkins_service
+  check_jenkins_http
+else
+  echo "Skipping Jenkins checks since $REMOTE_HOST is down."
+fi
