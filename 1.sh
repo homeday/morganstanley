@@ -62,13 +62,15 @@ fi
 
 echo "所有检查通过！"
 
-
 #!/bin/bash
 
 # Variables
 REMOTE_USER="your_username"
 REMOTE_HOST="your_remote_host"
+LOCAL_USER="your_local_username"
+LOCAL_HOST="your_local_host"
 JENKINS_URL="http://your_remote_host:8080"  # Adjust the port if necessary
+MAINTENANCE_FLAG="/path/to/maintenance.flag"  # Path to the maintenance flag file on the remote host
 
 # Function to check if the remote host is up
 check_host_up() {
@@ -78,6 +80,18 @@ check_host_up() {
     return 0
   else
     echo "$REMOTE_HOST is not reachable."
+    return 1
+  fi
+}
+
+# Function to check if the remote host is in maintenance mode
+check_maintenance_mode() {
+  echo "Checking if $REMOTE_HOST is in maintenance mode..."
+  if ssh "${REMOTE_USER}@${REMOTE_HOST}" "[ -f $MAINTENANCE_FLAG ]"; then
+    echo "$REMOTE_HOST is in maintenance mode."
+    return 0
+  else
+    echo "$REMOTE_HOST is not in maintenance mode."
     return 1
   fi
 }
@@ -106,10 +120,51 @@ check_jenkins_http() {
   fi
 }
 
-# Main script execution
-if check_host_up; then
-  check_jenkins_service
-  check_jenkins_http
-else
-  echo "Skipping Jenkins checks since $REMOTE_HOST is down."
-fi
+# Function to start Jenkins service on local node
+start_jenkins_on_local() {
+  echo "Starting Jenkins service on local node $LOCAL_HOST..."
+  sudo systemctl start jenkins
+  if systemctl is-active --quiet jenkins; then
+    echo "Jenkins service started successfully on local node."
+  else
+    echo "Failed to start Jenkins service on local node."
+  fi
+}
+
+# Function to stop Jenkins service on remote node
+stop_jenkins_on_remote() {
+  echo "Stopping Jenkins service on remote node $REMOTE_HOST..."
+  ssh "${REMOTE_USER}@${REMOTE_HOST}" << EOF
+    sudo systemctl stop jenkins
+    if systemctl is-active --quiet jenkins; then
+      echo "Failed to stop Jenkins service on remote node."
+    else
+      echo "Jenkins service stopped successfully on remote node."
+    fi
+EOF
+}
+
+# Function to check and handle Jenkins service status on both nodes
+check_and_handle_jenkins_status() {
+  if check_host_up; then
+    if check_maintenance_mode; then
+      echo "Skipping Jenkins checks since $REMOTE_HOST is in maintenance mode."
+    else
+      check_jenkins_service
+      check_jenkins_http
+      if [ "$HTTP_STATUS" -ne 200 ]; then
+        stop_jenkins_on_remote
+        start_jenkins_on_local
+      fi
+    fi
+  else
+    echo "Skipping Jenkins checks since $REMOTE_HOST is down."
+    start_jenkins_on_local
+  fi
+}
+
+# Periodically check the status of the remote host and Jenkins service
+while true; do
+  check_and_handle_jenkins_status
+  sleep 300  # Check every 5 minutes
+done
