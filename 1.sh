@@ -168,3 +168,179 @@ while true; do
   check_and_handle_jenkins_status
   sleep 300  # Check every 5 minutes
 done
+
+
+
+
+Check the default ticket cache
+bash
+Copy
+Edit
+klist
+This will show the currently active Kerberos ticket for your session, including:
+
+The principal (user) name
+Ticket expiration time
+The Key Distribution Center (KDC) that issued the ticket
+2. List tickets from a specific cache
+If you suspect that different users have separate ticket caches, you can specify the cache file explicitly:
+
+bash
+Copy
+Edit
+klist -c /tmp/krb5cc_user2
+or if using a different type of cache (e.g., in-memory for sssd):
+
+bash
+Copy
+Edit
+klist -c DIR:/run/user/$(id -u)/krb5cc
+3. Check all available caches (for modern systems using collection caches)
+bash
+Copy
+Edit
+klist -l
+This will list all ticket caches available to your user.
+
+4. Verify ticket ownership
+If you’re logged in as user1 but want to confirm if user2's ticket is being used, run:
+
+bash
+Copy
+Edit
+klist | grep Principal
+This will show which principal (user) has an active ticket.
+
+5. Show ticket details (verbose mode)
+To get more details, such as the encryption type:
+
+bash
+Copy
+Edit
+klist -e
+6. Check ticket expiration
+If you want to know when a ticket will expire:
+
+bash
+Copy
+Edit
+klist -A
+
+
+
+
+
+How to Manage Multiple Kerberos Ticket Caches
+If you need to maintain multiple tickets for different accounts, you can use cache switching:
+
+1️⃣ Use KRB5CCNAME to store multiple tickets
+You can assign different ticket caches for different accounts like this:
+
+bash
+Copy
+Edit
+# Obtain a ticket for user1
+export KRB5CCNAME=/tmp/krb5cc_user1
+kinit user1@REALM
+
+# Obtain a ticket for user2 without overwriting user1's cache
+export KRB5CCNAME=/tmp/krb5cc_user2
+kinit -k -t /path/to/keytab user2@REALM
+Whenever you need to switch between accounts, set the cache name:
+
+bash
+Copy
+Edit
+export KRB5CCNAME=/tmp/krb5cc_user1  # Switch back to user1
+klist  # Verify the ticket in use
+2️⃣ Using kinit -c to specify the cache per command
+Instead of setting an environment variable, you can specify the cache directly:
+
+bash
+Copy
+Edit
+kinit -c /tmp/krb5cc_user1 user1@REALM
+kinit -c /tmp/krb5cc_user2 -k -t /path/to/keytab user2@REALM
+3️⃣ List and use different ticket caches
+Check all stored ticket caches:
+
+bash
+Copy
+Edit
+klist -l
+Switch to a specific cache:
+
+bash
+Copy
+Edit
+export KRB5CCNAME=KEYRING:persistent:$(id -u)
+4️⃣ Automate switching with scripts
+You can create a script to switch accounts:
+
+bash
+Copy
+Edit
+#!/bin/bash
+export KRB5CCNAME="/tmp/krb5cc_$1"
+klist
+Save it as switch_kerberos.sh, then run:
+
+bash
+Copy
+Edit
+source switch_kerberos.sh user1
+🚀 Key Takeaways
+By default, only one ticket is active per session.
+Using KRB5CCNAME or -c allows storing multiple tickets.
+Always check active tickets with klist
+
+Scenario 1: Default (Per-Session Ticket Cache)
+By default, each SSH session has its own separate Kerberos ticket cache.
+
+If you refresh the ticket in one session (kinit), it does not affect the other session.
+Running klist in the second session will still show the old ticket until it expires.
+👉 Result: The other session is not affected unless a shared cache is used.
+
+🔍 Scenario 2: Shared Cache (KEYRING or FILE)
+If both SSH sessions use the same ticket cache file (e.g., /tmp/krb5cc_user1), then:
+
+Running kinit in one session refreshes the ticket in the shared cache.
+The second session will immediately see the updated ticket when running klist.
+Check if your system is using a shared cache:
+
+bash
+Copy
+Edit
+klist -l
+If both sessions point to the same cache, then they share tickets.
+
+👉 Result: If the cache is shared, all sessions see the updated ticket.
+
+🔍 Scenario 3: Persistent Ticket Cache (KEYRING:persistent or DIR:)
+On modern Linux systems, Kerberos may use a persistent ticket cache (e.g., KEYRING:persistent:UID or DIR:/run/user/UID/krb5cc).
+
+If both SSH sessions use this persistent cache, they share the same ticket.
+Refreshing (kinit) in one session immediately updates the ticket for all sessions.
+Check your current cache type:
+
+bash
+Copy
+Edit
+echo $KRB5CCNAME
+If it shows something like KEYRING:persistent:1000 or DIR:/run/user/1000/krb5cc, the cache is shared.
+
+👉 Result: If using a persistent cache, all sessions get the refreshed ticket.
+
+🚀 How to Ensure Shared or Separate Caches?
+If you want all SSH sessions to share tickets, explicitly set:
+bash
+Copy
+Edit
+export KRB5CCNAME=KEYRING:persistent:$(id -u)
+If you want separate tickets per session, use a unique cache per session:
+bash
+Copy
+Edit
+export KRB5CCNAME=/tmp/krb5cc_session_$$
+kinit user@REALM
+Would you like to test which setup your system is using?
