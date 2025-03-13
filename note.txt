@@ -1,0 +1,1 @@
+When switching to standby mode, the original active node may still be running the Jenkins service. This happens because the new active node (previously the standby) may not have been able to properly stop or disable the service on the original active node, especially if that node went down unexpectedly. To address this issue, we implement logic to handle it appropriately.
