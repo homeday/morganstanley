@@ -4,83 +4,57 @@
 
 1. [Overview](#overview)
 2. [System Components](#system-components)
-   - [Jenkins Master](#jenkins-master)
+   - [Jenkins Controller](#jenkins-Controller)
    - [Agents](#agents)
    - [External Services](#external-services)
    - [User Interaction](#user-interaction)
 3. [Component Interactions](#component-interactions)
 4. [Visual Representation](#visual-representation)
-5. [Scalability Considerations](#scalability-considerations)
-6. [Security Measures](#security-measures)
-7. [Conclusion](#conclusion)
 
 ## Overview
 
-This document provides a detailed overview of our Jenkins-based Continuous Integration/Continuous Deployment (CI/CD) pipeline. It outlines the system's components, their interactions, and considerations for scalability and security.
+This document provides a overview of our Jenkins-based Continuous Integration(CI/CD) pipeline solution. It outlines the its components, their interactions, and considerations for scalability and security.
 
 ## System Components
 
-### Jenkins Master
+### Jenkins Controller
 
-The Jenkins Master is the central orchestrator of the CI/CD pipeline. Its responsibilities include:
+The Jenkins Controller is the central orchestrator of the CI/CD pipeline. Its responsibilities include:
 
 - **Job Scheduling:** Managing and triggering build jobs based on predefined criteria.
 - **Plugin Management:** Extending Jenkins functionalities through various plugins.
 - **Resource Allocation:** Assigning tasks to appropriate agents based on availability and capability.
 
-In our setup, the Jenkins Master comprises:
+In our setup, the Jenkins Controller comprises:
 
 - **Active Node:** The primary instance handling all operations.
 - **Standby Node:** A failover instance ensuring high availability.
 
 ### Agents
 
-Agents are responsible for executing tasks assigned by the Jenkins Master. We have categorized them as:
+Agents are responsible for executing real tasks assigned by the Jenkins Master. We have categorized them as:
 
-- **BYOA Node Inbound Agent:** Handles inbound connections for specific tasks.
-- **MSDE Node SSH Agent:** Executes tasks over SSH, suitable for secure operations.
-- **CKS Node Pod Agent:** Runs tasks within Kubernetes pods, facilitating containerized builds.
+- **BYOA Agent:** Users can register their own VMs to be as Jenkins agents.
+- **MSDE Agent:** The Agents which are provided by MSDE.
+- **CKS Pod Agent:** Runs tasks within CKS pods
 
 ### External Services
 
 Our Jenkins environment interacts with several external services:
 
 - **BitBucket:** Source code repository triggering builds via webhooks.
-- **NAS (Network Attached Storage):** Stores artifacts and backups accessible over NFS.
+- **NAS:** Stores Jenkins controller configure data and logs.
 - **Artifactory:** Manages binary artifacts, serving as a repository for build outputs.
-- **Jenkins QA:** Quality assurance instance for testing plugins and updates.
-- **Update Center:** Provides updates and plugins for Jenkins.
+- **Jenkins QA:** QA instance for testing plugins and updates.
+- **Update Center:** Provides updates and plugins for Jenkins (internet).
 
 ### User Interaction
 
 Users interact with the system through:
 
-- **AI Self Services:** Automated services for adding agents and managing jobs.
-- **JSM (Jira Service Management):** Platform for ticketing and issue tracking.
-- **Train Application:** Application for training purposes, accessible via console commands.
-
-## Component Interactions
-
-The interactions between components are as follows:
-
-- **User to Train Application:** Users issue console commands to the Train Application.
-- **Train Application to AI Self Services:** Communicates via HTTPS RESTful APIs.
-- **Agents to Artifactory:** Agents download and publish files to Artifactory.
-- **BitBucket to Jenkins:** Webhooks notify Jenkins of events, triggering builds.
-- **Jenkins to BitBucket:** Jenkins creates webhooks in BitBucket for integration.
-- **Jenkins to MSDE Agent:** Connects over SSH for task execution.
-- **BYOA and CKS Agents to Jenkins:** Communicate via Jenkins Remoting over TCP/IP port 7788.
-- **Agents to BitBucket:** Access source code over HTTPS on port 443.
-- **Jenkins to NAS:** Utilizes NFS for storage operations.
-- **User to Jenkins:** Accesses Jenkins Portal for job management.
-- **User to AI Self Services:** Interacts with the Train Application.
-- **AI Self Services to Jenkins:** Manages agents and jobs.
-- **User to JSM:** Submits tickets via JSM forms.
-- **JSM to AI Self Services:** Notifies via webhooks.
-- **Update Center to Jenkins QA:** Downloads plugins and updates.
-- **Jenkins QA to Artifactory:** Publishes plugins.
-- **Artifactory to NAS:** NAS downloads plugins from Artifactory.
-
+- **JSM:** Users can open a ticket to add their own VMs as Jenkins Agents (BYOA).
+- **Train Application:** Application for creating/modifying/deleting Jenkins jobs.
+- **UI Portal:** Users can view the results of their Jenkins jobs and add credentials via it.
 ## Visual Representation
 
 Below is a visual representation of the Jenkins architecture:
