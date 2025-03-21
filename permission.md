@@ -49,3 +49,46 @@ The current Jenkins solution defines two global roles:​
 Admin Role: Assigned to Jenkins administrators. An ACL group controls membership, eliminating the need to access the UI to add or remove members. This means one ACL group is assigned to the Admin Role.​
 
 Reader Role: Assigned to all authenticated users, with permissions defined accordingly.
+
+
+Inbound Agent Workflow
+
+sequenceDiagram
+    participant Agent as Jenkins Inbound Agent
+    participant Controller as Jenkins Controller
+    participant Executor as Build Executor
+    participant Workspace as Workspace
+
+    Note over Agent, Controller: Agent initiates connection to Controller using agent.jar
+    Agent->>Controller: Download agent.jar from Controller
+    Agent->>Controller: java -jar agent.jar -jnlpUrl <jnlpUrl> -secret <secret> -workDir <workDir>
+    Controller->>Agent: Authentication and Configuration
+    Controller->>Agent: Assign Build Task
+    Agent->>Executor: Execute Build Task
+    Executor->>Workspace: Access Code and Resources
+    Executor->>Agent: Report Build Results
+    Agent->>Controller: Send Build Results
+    Controller->>Agent: Acknowledge Completion
+    Note over Agent, Controller: Agent awaits next task or disconnects
+
+
+ SSH Agent Connection Mechanism 
+ 
+sequenceDiagram
+    participant Controller as Jenkins Controller
+    participant Agent as Jenkins SSH Agent
+    participant Build as Build Executor
+    participant Workspace as Workspace
+
+    Note over Controller, Agent: Controller initiates SSH connection to Agent
+    Controller->>Agent: SSH Connection Request
+    Agent->>Controller: SSH Authentication
+    Controller->>Agent: Transfer remoting.jar
+    Controller->>Agent: Launch remoting.jar
+    Controller->>Agent: Assign Build Task
+    Agent->>Build: Execute Build Task
+    Build->>Workspace: Access Code and Resources
+    Build->>Agent: Report Build Results
+    Agent->>Controller: Send Build Results
+    Controller->>Agent: Acknowledge Completion
+    Note over Controller, Agent: Agent awaits next task or disconnects
