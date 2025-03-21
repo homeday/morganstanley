@@ -73,7 +73,7 @@ sequenceDiagram
 
 
  SSH Agent Connection Mechanism 
- 
+
 sequenceDiagram
     participant Controller as Jenkins Controller
     participant Agent as Jenkins SSH Agent
@@ -92,3 +92,25 @@ sequenceDiagram
     Agent->>Controller: Send Build Results
     Controller->>Agent: Acknowledge Completion
     Note over Controller, Agent: Agent awaits next task or disconnects
+
+
+​Involving JSM and AI Self-Service to oversee the addition of Jenkins agents offers several advantages:​
+
+Two-Level Approvals: Implementing a two-level approval process enables ITSO to ensure that all requirements are met and restricts the ability to add agent nodes to Jenkins.​
+
+VM Type Validation: Since Jenkins is currently used for building and deployment to QA environments, it's essential to validate that only non-production VMs are added.​
+
+Audit Trail: This approach provides a clear audit trail, detailing which VMs are added and by whom in the JSM ticket.​
+
+Permission Management: Limiting permissions ensures that users cannot add agents directly from the Jenkins portal, enhancing security.
+
+
+
+--------------------------
+"​Incorporating AI Self-Service and the Train console application to provide launch arguments and the JAR package enhances security and usability:​
+
+Protection of Sensitive Configuration Data: Jenkins stores a secret text for each agent. When launching the agent, the command must include this secret to authenticate the connection. With AI Self-Service, users do not need to view or store this secret text, thereby reducing the risk of exposure.​
+
+Simplified Launch Commands: By utilizing Train, users can avoid memorizing complex launch commands. Instead, they can execute a straightforward command like train agent launch, streamlining the process.
+
+
