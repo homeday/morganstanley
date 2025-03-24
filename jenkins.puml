@@ -1,17 +1,16 @@
 @startuml Jenkins HA with F5 Load Balancer
-title Jenkins HA with F5 Load Balancer
+title Jenkins High Availability with F5 Load Balancer
 
 actor User
 node BYOA
 
 rectangle "F5 Load Balancer" as F5 #MintCream;line:Orange;text:MidnightBlue {
     node "Virtual Server" as VS #MintCream;line:Orange;text:MidnightBlue 
-    note right of VS 
-    - Two nodes are configured as a pool.  
-    - Active Node Priority: 100  
-    - Standby Node Priority: 0  
-        - Requests go to active node by default.  
-    - F5 performs health checks using Jenkins login URL.  
+    note right of VS
+        - Two nodes are configured as a pool with Active/Standby mode.
+        - A configuration file in the NAS defines the roles of the two nodes.
+        - The Active node is the default target for all requests.
+        - The Standby node is used if the Active node is down.
     end note
 }
 
@@ -19,34 +18,30 @@ node "Jenkins Active Node" as Active #palegreen;line:green;text:green
 
 node "Jenkins Standby Node" as Standby #aliceblue;line:blue;line.dotted;text:blue {
     rectangle service #aliceblue;line:blue;text:blue [
-        By default, the Jenkins service is stopped.   
-    ]
-    rectangle Script #aliceblue;line:blue;text:blue [
-        Run a script via crontab (or similar).  
-        - Checks active node status.  
-        - If down, starts Jenkins on standby (unless in maintenance).  
+        By default, the Jenkins service is stopped.
+        - Runs a script via cron.
+        - Checks Active node status.
+        - If down, starts Jenkins on Standby (unless in maintenance).
+        - Updates role in the NAS configuration file.
         - Logs status for review.
     ]
 }
 
-note top of Standby
-After the active node recovers.
-And switch back, ensuring no jobs are in progress.  
-end note
-
 folder "NAS (JENKINS_HOME)" as NAS #linen;line:navy;text:navy
 
-User --> VS : Access with https/443
-BYOA --> VS : Connect with Tcp/7788
+User --> VS : Access via HTTPS (Port 443)
+BYOA --> VS : Connect via TCP (Port 7788)
 
-VS --> Active #green;text:green : Https/443 and Tcp/7788\nrequest by default
+VS --> Active #green;text:green : HTTPS (Port 443) and TCP (Port 7788) requests by default
 F5 --> Active #Orange;text:Orange : Health Check
-VS --> Standby #blue;line.dotted;text:blue : Https/443 and Tcp/7788 requests\nif active node is down
-F5 --> Standby #Orange;text:Orange : Health Check 
+VS --> Standby #blue;line.dotted;text:blue : HTTPS and TCP requests if Active node is down
+F5 --> Standby #Orange;text:Orange : Health Check
 
-Script --> Active #blue;text:blue : Monitor Jenkins service status
-
-Active -- NAS #navy;text:navy : Read/Write
-Standby -- NAS #navy;text:navy : Read/Write
+service --> Active #blue;text:blue : Monitors Jenkins service status
+note right of Active
+    The monitoring script runs on both machines.
+end note
+Active -[#navy]> NAS : Read/Write
+Standby -[#navy]> NAS : Read/Write
 
 @enduml

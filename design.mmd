@@ -1,28 +1,43 @@
-%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#F5FFFA', 'edgeLabelBackground':'#FFFFFF', 'tertiaryColor': '#F5FFFA', 'nodeBorder': '#FFA500', 'primaryTextColor': '#191970', 'secondaryTextColor': '#191970' }}}%%
-flowchart LR
-    subgraph F5_Load_Balancer["F5 Load Balancer"]
-        direction LR
+graph TD
+
+    User
+
+    subgraph F5
+        direction TB
         VS["Virtual Server"]
-        note1["- Two nodes are configured as a pool.<br>- Active Node Priority: 100<br>- Standby Node Priority: 0<br>- Requests go to active node by default.<br>- F5 performs health checks using Jenkins login URL."]
-        VS --> note1
+        %% note "F5 Load Balancer" right of VS
+        %%     """
+        %%     - Two nodes are configured as a pool with Active/Standby mode
+        %%     - Use a configure file in the NAS to member two nodes' role.
+        %%     - Active node is the default target for all requests.
+        %%     - Standby node is used if the active node is down.
+        %%     """
+        %% end
     end
 
-    subgraph Standby_Node["Jenkins Standby Node"]
-        direction LR
-        service["Jenkins Service<br>(By default, stopped)"]
-        Script["Script<br>- Checks active node status.<br>- If down, starts Jenkins on standby (unless in maintenance).<br>- Logs status for review."]
-        note2["After the active node recovers and switches back, ensuring no jobs are in progress."]
-        Script --> note2
-    end
 
-    User["User"]
-    BYOA["BYOA"]
+
     Active["Jenkins Active Node"]
-    NAS["NAS (JENKINS_HOME)"]
 
-    User e1@==>|Access with https/443| VS
-    e1@{ animate: true }
+    subgraph "Jenkins Standby Node"
+        direction TB
+        Standby["Jenkins Standby Node"]
+        Service["Service\nBy default, the Jenkins service is stopped."]
+        Script["Script\nRun a script via crontab.\n- Checks active node status.\n- If down, starts Jenkins on standby (unless in maintenance).\n- Switches standby/active in a configure file in the NAS.\n- Logs status for review."]
+    end
+
+    NAS["NAS (JENKINS_HOME)"]
+    User -->|Access with https/443| VS
     BYOA -->|Connect with Tcp/7788| VS
-    VS -->|Https/443 and Tcp/7788 requests by default| Active
-    VS -->|Https/443 and Tcp/7788 requests if active node is down| Standby_Node
+    VS -->|Https/443 and Tcp/7788 request by default| Active
+    F5 -->|Health Check| Active
+    VS -.->|Https/443 and Tcp/7788 requests if active node is down| Standby
+    F5 -->|Health Check| Standby
+    Script -->|Monitor Jenkins service status| Active
+    %% note right of Active
+    %%     """
+    %%     The monitor script runs on both machines.
+    %%     """
+    %% end
     Active -->|Read/Write| NAS
+    Standby -->|Read/Write| NAS
