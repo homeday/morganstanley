@@ -9,6 +9,21 @@ In our solution, Jenkins agents are required to execute build and deployment tas
 2. **MSDE Agent**: Managed agents provided by MSDE.
 3. **CKS Agent**: Pods from CKS.
 
+Context:
+
+In our continuous integration and deployment (CI/CD) pipeline, Jenkins agents are essential for executing build and deployment tasks, particularly targeting the Quality Assurance (QA) environment. The selection of an appropriate agent configuration is influenced by specific use cases and infrastructure requirements. To accommodate diverse needs, we offer the following agent options:​
+
+Bring Your Own Agent (BYOA): Custom agents provided and managed by the user.​
+
+MSDE Agent: Managed agents provided by MSDE.​
+
+CKS Agent: Pods from CKS.​
+
+Decision:
+
+After evaluating the available options, we recommend prioritizing the Bring Your Own Agent (BYOA) approach. This strategy allows users to tailor agents to their specific requirements, ensuring optimal performance and compatibility with their existing systems. While BYOA is our preferred solution, the MSDE Agent and CKS Agent options remain available to cater to varying organizational needs and infrastructure setups.
+
+
 ## BYOA
 ### Register flow diagram
 
