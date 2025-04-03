@@ -128,3 +128,8 @@ Active -- NAS #navy;text:navy : Read/Write
 Standby -- NAS #navy;text:navy : Read/Write
 
 @enduml
+
+
+Implementing an Active/Standby High Availability (HA) configuration for Jenkins using an F5 Load Balancer and a script on the Standby Node to monitor the Active Node's Jenkins instance.​
+
+In the event of a failover, the system would switch to the Active/Standby HA configuration and initiate the Jenkins service on the Standby Node. Additionally, configuration and log data would be shared via Network Attached Storage (NAS) to ensure consistency between the two nodes.
