@@ -1,0 +1,17 @@
+Jenkins credentials will be managed securely using its built-in credential storage and an external Vault. Credentials will not be hardcoded in scripts or stored locally.
+
+Storage:
+
+System-level credentials are centrally managed in $JENKINS_HOME/credentials.xml and restricted by the MSDE team.
+
+Job/folder-level credentials are stored in config.xml files and controlled using Role-Based Access Control (RBAC).
+
+Secrets and encryption keys reside in $JENKINS_HOME/secrets/ with strict access control.
+
+Security:
+
+Jenkins encrypts credentials using AES, with keys stored in $JENKINS_HOME/secrets/master.key.
+
+Encryption ensures that even if files are exposed, credentials remain protected.
+
+External Vault integration allows retrieval of secrets dynamically when needed.
