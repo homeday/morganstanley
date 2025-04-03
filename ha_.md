@@ -12,17 +12,39 @@ Accepted
 
 Ensuring continuous availability of Jenkins is critical for our development and deployment pipelines. To mitigate risks associated with single points of failure, we require a High Availability (HA) solution that provides failover capabilities and minimizes downtime. However, due to Jenkins' architecture, certain constraints must be considered when designing an HA solution.
 
-## 4. Decision
+## 4.Decision:
 
-We will implement an Active/Standby HA configuration for Jenkins using an F5 Load Balancer. In this setup:
+We will implement an Active/Standby High Availability (HA) configuration for Jenkins with the following components:​
 
-- **Active Node:** Handles all incoming requests and performs Jenkins operations.
+- Active Node:
 
-- **Standby Node:** Remains idle with the Jenkins service stopped. It monitors the Active node's status and activates Jenkins services if the Active node becomes unresponsive.
+Hosts the primary Jenkins instance, with the JENKINS_HOME directory located on its local disk.​
 
-- **F5 Load Balancer:** Manages traffic distribution and health checks. It directs user requests to the Active node and reroutes to the Standby node upon detecting a failure.
+Utilizes the ThinBackup plugin to perform regular backups of critical configurations and job data to a Network Attached Storage (NAS).​
 
-- **Shared Storage (NAS):** Both nodes access a shared Network Attached Storage (NAS) for the Jenkins home directory (`JENKINS_HOME`), ensuring data consistency.
+- Standby Node:
+
+Hosts a secondary Jenkins installation with the JENKINS_HOME directory on its local disk.​
+
+The Jenkins service remains inactive under normal operations.​
+
+In the event of a failure detected through external monitoring tools or manual observation, an operator will:​
+
+Manually copy the latest backup from the NAS to the Standby Node's local JENKINS_HOME.
+
+Start the Jenkins service on the Standby Node.
+
+- F5 Load Balancer:
+
+Manages incoming user traffic, directing requests to the Active Node during normal operations.​
+
+Upon manual intervention indicating an Active Node failure, traffic can be redirected to the Standby Node.​
+
+- Network Attached Storage (NAS):
+
+Serves as the centralized repository for Jenkins backups.​
+
+Ensures that the Standby Node has access to the most recent configurations and job data for restoration in case of Active Node failure.
 
 ## 5. Rationale
 

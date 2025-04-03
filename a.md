@@ -1,19 +1,12 @@
 # Jenkins Architecture Documentation
 
-## Table of Contents
+## Context:
 
-1. [Overview](#overview)
-2. [System Components](#system-components)
-   - [Jenkins Controller](#jenkins-Controller)
-   - [Agents](#agents)
-   - [External Services](#external-services)
-   - [User Interaction](#user-interaction)
-3. [Component Interactions](#component-interactions)
-4. [Visual Representation](#visual-representation)
+In the current software development landscape, delivering high-quality applications rapidly and efficiently is paramount. CI/CD practices have become essential to achieve this goal, enabling teams to automate the building, testing, and deployment of code changes.​
+## Decision:
 
-## Overview
-
-This document provides a overview of our Jenkins-based Continuous Integration(CI/CD) pipeline solution. It outlines the its components, their interactions, and considerations for scalability and security.
+To implement effective CI/CD pipelines, we have chosen Jenkins as our automation server. Jenkins is an open-source tool renowned for its extensibility and robust plugin ecosystem, offering over 1,000 plugins that significantly extend its core functionality. By leveraging Jenkins, we aim to streamline our development workflows, reduce manual errors, and accelerate our release cycle.​
+digital.ai
 
 ## System Components
 
