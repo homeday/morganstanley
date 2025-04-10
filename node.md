@@ -80,3 +80,11 @@ Centralized Access Control: A centralized system simplifies data access policies
 PRIVACERA
 
 By utilizing the AI Self-Service system, organizations can effectively safeguard sensitive information and maintain robust security practices.
+
+
+Consequence
+Adopting the BYOA (Bring Your Own Agent) model allows users to create and manage agents tailored to their specific needs. This approach supports greater flexibility, performance optimization, and integration with existing infrastructure. Teams can configure agents with the tools, environments, and permissions best suited for their workflows.
+
+To ensure consistency and security, the integration of JSM and the AI Self-Service system introduces a controlled and auditable process for agent registration and launch. This enables better compliance, centralized access control, and reduced risk of exposing sensitive data.
+
+While this model increases customization and scalability, it also requires users to take responsibility for maintaining their own agents and following standard onboarding procedures. The support for MSDE and CKS agents provides alternative options for teams that need managed or container-based solutions, offering a balanced architecture that can accommodate a wide range of use cases.

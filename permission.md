@@ -9,23 +9,12 @@ Architecture and High-Level Design
 Components
 The Role-based Authorization Strategy plugin provides a mechanism to limit control for different users. The plugin offers three types of roles:​
 Jenkins Plugins
-+3
-CloudBees Documentation
-+3
-wiki.jenkins-ci.org
-+3
 
 Global Roles: Assign permissions on a global basis, such as admin, job creator, anonymous, etc., allowing settings for Overall, Agent, Job, Run, View, and SCM permissions.​
 
 Item Roles: Assign item-specific permissions (e.g., Job, Run, or Credentials) on Jobs, Pipelines, and Folders.​
 
 Agent Roles: Assign agent-specific permissions.​
-GitHub
-+2
-Jenkins
-+2
-javadoc.jenkins.io
-+2
 
 Decision
 The current Jenkins solution incorporates two of these roles: Global and Item roles.​
@@ -106,11 +95,14 @@ Permission Management: Limiting permissions ensures that users cannot add agents
 
 
 
---------------------------
-"​Incorporating AI Self-Service and the Train console application to provide launch arguments and the JAR package enhances security and usability:​
+Consequence
+Implementing role-based permission control ensures that developers can only operate within the scope of their assigned projects, reducing the risk of accidental or unauthorized actions across unrelated jobs. The use of item roles tied to TAC groups enables fine-grained access control at the folder level, allowing teams to manage their own Jenkins jobs independently and securely.
 
-Protection of Sensitive Configuration Data: Jenkins stores a secret text for each agent. When launching the agent, the command must include this secret to authenticate the connection. With AI Self-Service, users do not need to view or store this secret text, thereby reducing the risk of exposure.​
+By assigning global roles to dedicated ACL groups, administrative access is centralized and auditable, while all authenticated users are granted minimal read-level permissions to promote transparency without compromising operational boundaries.
 
-Simplified Launch Commands: By utilizing Train, users can avoid memorizing complex launch commands. Instead, they can execute a straightforward command like train agent launch, streamlining the process.
+The inclusion of a controlled agent provisioning process via JSM and AI Self-Service further reinforces secure and compliant infrastructure usage. This structured approach supports traceability, enforces policy-driven VM validation, and prevents direct user modifications to Jenkins agent configurations.
+
+This model promotes accountability, maintains project isolation, and upholds security standards across the Jenkins environment, supporting scalable team operations without introducing unnecessary administrative burden.
+
 
 

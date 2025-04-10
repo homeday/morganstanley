@@ -117,4 +117,13 @@ flowchart TB
     class BitBucket,NAS,AIServices,JSM,JenkinsQA,UpdateCenter,Artifactory,TrainApp externalNode;
 
 
+
+Consequence
+Adopting Jenkins as our CI/CD platform provides a flexible and extensible foundation for automating software delivery. Its robust plugin ecosystem supports integration with a wide range of tools, enabling teams to build, test, and deploy code efficiently across different environments.
+
+The architecture, with an active-standby controller setup, supports high availability and operational resilience. Multiple agent types (BYOA, MSDE, CKS) offer scalability and adaptability to various team requirements and infrastructure setups. Integration with external systems like BitBucket, Artifactory, and NAS ensures a smooth flow of code, artifacts, and logs across the pipeline.
+
+This decision also introduces a need for ongoing maintenance of Jenkins components, plugin management, and operational oversight to ensure consistent performance and security. With proper governance and monitoring in place, this architecture positions the organization to deliver software quickly, reliably, and at scale.
+
+
  

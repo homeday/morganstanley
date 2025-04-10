@@ -38,3 +38,14 @@ Credentials can also be stored in an external Vault. MSDE provides a shared libr
 
 - **Encryption at Rest:**  
   Credentials are stored in an encrypted form in XML configuration files, ensuring that secret data is not stored in plaintext on disk, which enhances overall security.
+
+
+
+## Consequence
+This credential management approach enables secure, centralized handling of sensitive information across Jenkins jobs and infrastructure. By storing credentials within Jenkins or integrating with Vault, teams can access secrets safely without embedding them in scripts or exposing them in source control.
+
+The use of job- and folder-level scopes allows fine-grained access control, ensuring that only authorized jobs or users can access specific credentials. Leveraging RBAC for permission management further strengthens this control by aligning credential visibility with TAC group memberships.
+
+Encryption at rest, backed by AES and a securely stored master key, provides a strong safeguard against unauthorized access to stored secrets. The use of a NAS with ACL restrictions ensures that physical storage of credentials and encryption keys is tightly controlled.
+
+This model improves both security and compliance posture, while also simplifying secret distribution and rotation processes. It reduces the risk of credential leakage and supports secure automation across environments, empowering teams to build and deploy with confidence.

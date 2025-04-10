@@ -133,3 +133,14 @@ Standby -- NAS #navy;text:navy : Read/Write
 Implementing an Active/Standby High Availability (HA) configuration for Jenkins using an F5 Load Balancer and a script on the Standby Node to monitor the Active Node's Jenkins instance.​
 
 In the event of a failover, the system would switch to the Active/Standby HA configuration and initiate the Jenkins service on the Standby Node. Additionally, configuration and log data would be shared via Network Attached Storage (NAS) to ensure consistency between the two nodes.
+
+
+
+Consequence
+Switching to local disk storage for Jenkins home data on both the Active and Standby Nodes enhances performance by removing potential bottlenecks associated with network storage. This configuration also simplifies the setup by eliminating the reliance on Network Attached Storage (NAS) for real-time access, although it still leverages NAS for backup storage.
+
+The use of the ThinBackup plugin ensures that regular backups of the Jenkins home data, including configurations and job data, are created and stored on NAS. This backup strategy ensures data consistency and allows for quick recovery in case of a failure. During failover, an operator manually copies the latest backup from the NAS to the Standby Node's local disk, minimizing data loss and reducing downtime.
+
+This approach strikes a balance between resilience and operational simplicity, ensuring that Jenkins can recover swiftly without overcomplicating the infrastructure. However, it introduces a delay during failover since the data must be copied from NAS to the Standby Node's local disk, which may cause brief service interruptions.
+
+While the use of local disks simplifies storage and reduces reliance on network storage for real-time data access, the system still requires careful monitoring and manual intervention during failover scenarios. The process is efficient and minimizes impact on the overall CI/CD pipeline but requires proper failover procedures to ensure a smooth transition.
