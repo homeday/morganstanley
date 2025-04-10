@@ -1,0 +1,16 @@
+^(logs|security)(/)?$
+
+find . -maxdepth 1 -type d -name 'FULL*' -printf "%f\n" | \
+sort -r | \
+while read -r dir; do
+  if [ -f "$dir/complete" ]; then
+    echo "$dir"
+    exit 0  # 找到后立即退出
+  fi
+done
+
+
+if [ $? -ne 0 ]; then
+  echo "未找到包含 complete 文件的目录" >&2
+  exit 1
+fi
