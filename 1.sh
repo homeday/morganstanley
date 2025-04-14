@@ -1,4 +1,17 @@
 #!/bin/bash
+#
+# Script Name: backup.sh
+# Description: Performs daily backups of the /home directory.
+# Usage: ./backup.sh [destination_directory]
+# Author: Jane Doe
+# Created: 2025-04-14
+# Version: 1.0
+# License: MIT
+#
+# Notes:
+# - Requires rsync to be installed.
+# - Ensure the destination directory has sufficient space.
+
 
 PEM_FILE=your_concatenated.pem
 KEYSTORE=your_keystore.jks
