@@ -453,3 +453,7 @@ pipeline {
         }
     }
 }
+
+ Jenkins Pipeline File Management: stash, unstash, archiveArtifacts, and copyArtifacts Explained
+📦 Managing Files in Jenkins Pipelines: A Guide to stash, unstash, archiveArtifacts, and copyArtifacts
+🔄 Jenkins Pipeline File Handling: Understanding stash, unstash, archiveArtifacts, and copyArtifacts
