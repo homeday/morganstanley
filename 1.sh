@@ -357,3 +357,12 @@ Edit
 export KRB5CCNAME=/tmp/krb5cc_session_$$
 kinit user@REALM
 Would you like to test which setup your system is using?
+
+
+
+openssl s_client -connect your-scm-server:443 -tls1_2
+curl -v --tlsv1.2 https://your-scm-server
+
+openssl s_client -connect www.example.com:443 -tls1_2
+
+GIT_CURL_VERBOSE=1 git clone https://your-scm-server/repo.git
