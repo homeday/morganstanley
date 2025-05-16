@@ -1,0 +1,46 @@
+Using the Task Scheduler GUI
+Open Task Scheduler:
+
+Press Win + R, type taskschd.msc, and press Enter.
+
+Create a New Task:
+
+In the Task Scheduler Library, right-click and select Create Task.
+
+General Tab:
+
+Enter a Name for the task.
+
+Select Run whether user is logged on or not.
+
+
+Triggers Tab:
+
+Click New....
+
+Set Begin the task to At startup.
+
+Click OK.
+
+Actions Tab:
+
+Click New....
+
+Set Action to Start a program.
+
+Browse to the program or script you wish to run.
+
+Click OK.
+
+Settings Tab:
+
+Uncheck Stop the task if it runs longer than.
+
+Uncheck If the running task does not end when requested, force it to stop.
+
+
+Finalize:
+
+Click OK.
+
+When prompted, enter the credentials for the user account under which the task will run.
