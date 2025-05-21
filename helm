@@ -1,0 +1,108 @@
+Define the Helm Chart Source:
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: helm-charts
+  namespace: flux-system
+spec:
+  interval: 1m0s
+  url: https://github.com/your-org/helm-charts-repo
+  ref:
+    branch: main
+
+Define the HelmRelease:
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: my-app
+  namespace: my-app
+spec:
+  interval: 5m
+  chart:
+    spec:
+      chart: ./my-app
+      sourceRef:
+        kind: GitRepository
+        name: helm-charts
+        namespace: flux-system
+  values:
+    replicaCount: 2
+    image:
+      repository: myregistry.com/my-app
+      tag: "1.0.0"
+      pullPolicy: IfNotPresent
+
+
+Define the Kustomization:
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: my-app
+  namespace: flux-system
+spec:
+  interval: 10m
+  path: ./apps/my-app
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-config
+    namespace: flux-system
+  targetNamespace: my-app
+
+
+
+  # templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .Values.serviceAccount.name }}
+  namespace: {{ .Release.Namespace }}
+imagePullSecrets:
+  - name: {{ .Values.imagePullSecret.name }}
+
+
+
+    serviceAccount:
+  name: my-app-sa
+
+imagePullSecret:
+  name: my-registry-secret
+
+
+    # templates/cronjob.yaml
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ .Release.Name }}-cronjob
+  namespace: {{ .Release.Namespace }}
+spec:
+  schedule: "{{ .Values.cron.schedule }}"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: {{ .Values.serviceAccount.name }}
+          containers:
+            - name: {{ .Chart.Name }}
+              image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+              imagePullPolicy: {{ .Values.image.pullPolicy }}
+              command: {{ toJson .Values.cron.command }}
+              args: {{ toJson .Values.cron.args }}
+          restartPolicy: OnFailure
+cron:
+  schedule: "0 0 * * *"
+  command:
+    - /bin/sh
+    - -c
+  args:
+    - echo "Hello, World!"
+
+image:
+  repository: myregistry.com/my-app
+  tag: "1.0.0"
+  pullPolicy: IfNotPresent
+
+
+helm install my-app ./my-helm-chart
+
+  
