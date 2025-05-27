@@ -94,3 +94,24 @@ GitOps repo (myapp-gitops)
 Helm chart repo (myapp-helm)
 └── /charts/myapp/Chart.yaml etc.
 
+
+kubectl get secret my-docker-secret -n default -o jsonpath="{.data.\.dockerconfigjson}" | base64 --decode
+# This secret is always created
+apiVersion: v1
+kind: Secret
+metadata:
+  name: always-secret
+type: Opaque
+stringData:
+  key: "always here"
+
+{{- if .Values.createOptionalSecret }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: optional-secret
+type: Opaque
+stringData:
+  key: "optional here"
+{{- end }}
