@@ -118,6 +118,14 @@ class CKSAgentConfHelper implements Serializable {
             kinit -kt ${KERBEROS_PATH}/user.keytab ${principal}
         """.stripIndent().trim()]
 
+//         def initScript = """
+//     |#!/bin/sh
+//     |echo "Decoding keytab"
+//     |echo "$KEYTAB_B64" | base64 -d > /tmp/keytab && \
+//     |kinit -kt /tmp/keytab user@REALM
+// """.stripMargin()
+
+
         container.env = (container.env ?: []) + [
             [name: "KEYTAB_B64", value: keytabB64],
             [name: "KRBSCCNAME", value: "${KERBEROS_PATH}/krb5cc_${principal.replaceAll('@', '_')}"]
