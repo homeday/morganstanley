@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Pod
+spec:
+  initContainers:
+    - name: tgt-refresher
+      image: your-kinit-image  # e.g., a slim Linux + kerberos client
+      command:
+        - /bin/sh
+        - -c
+        - |
+          echo $KEYTAB_BASE64 | base64 -d > /tmp/kerberos_jenkins/user.keytab
+          kinit -kt /tmp/kerberos_jenkins/user.keytab your_principal@YOUR.REALM
+      env:
+        - name: KEYTAB_BASE64
+          valueFrom:
+            secretKeyRef:
+              name: msde-agent-qa-tgt
+              key: keytab
+      volumeMounts:
+        - name: tgt-secret
+          mountPath: /tmp/kerberos_jenkins
