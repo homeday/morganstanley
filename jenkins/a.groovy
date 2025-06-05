@@ -105,3 +105,34 @@ class CKSAgentConfHelper implements Serializable {
         script.libraryResource("com/cn/ms/msde/jenkins/podtemplates/${agentType}.yaml")
     }
 }
+
+
+def getValueFromPath(Map json, String path) {
+    def matcher = path =~ /(?:\."([^"]+)")|(?:\.([^".]+))/
+    def current = json
+    
+
+    matcher.each { match ->
+        def key = match[1] != null ? match[1] : match[2]
+        if (current instanceof Map && current.containsKey(key)) {
+            current = current[key]
+        } else {
+            current = null
+            return
+        }
+    }
+    return current
+}
+
+
+List<String> extractKeys(String path) {
+    def matcher = path =~ /(?:\."((?:[^"\\]|\\.)+)")|(?:\.([^".]+))/
+    def keys = []
+
+    matcher.each { match ->
+        def key = match[1] != null ? match[1].replaceAll(/\\(.)/, '$1') : match[2]
+        keys << key
+    }
+
+    return keys
+}
