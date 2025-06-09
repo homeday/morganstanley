@@ -1,0 +1,200 @@
+my-nginx/
+├── charts/
+├── templates/
+│   └── deployment.yaml
+│   └── service.yaml
+├── values.yaml
+├── Chart.yaml
+
+
+Chart.yaml:
+
+apiVersion: v2
+name: my-nginx
+version: 0.2.0
+description: A basic NGINX chart
+
+values.yaml
+
+replicaCount: 1
+image:
+  repository: nginx
+  tag: stable
+service:
+  type: ClusterIP
+  port: 80
+
+templates/deployment.yaml (simplified)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: nginx
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          ports:
+            - containerPort: 80
+
+helm package my-nginx             # creates my-nginx-0.2.0.tgz
+helm repo index . --url https://your-org.github.io/helm-charts/
+
+🧭 3. Flux GitOps Repository Structure
+infrastructure/
+├── clusters/
+│   ├── dev/
+│   │   └── my-nginx-helmrelease.yaml
+│   └── qa/
+│       └── my-nginx-helmrelease.yaml
+├── sources/
+│   └── helmrepo-my-nginx.yaml
+
+🌐 4. HelmRepository Definition (sources/helmrepo-my-nginx.yaml)
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: my-nginx-repo
+  namespace: flux-system
+spec:
+  interval: 1m
+  url: https://your-org.github.io/helm-charts/
+
+🚀 5. HelmRelease for Dev (clusters/dev/my-nginx-helmrelease.yaml)
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: my-nginx
+  namespace: flux-system
+spec:
+  interval: 1m
+  releaseName: my-nginx-dev
+  targetNamespace: dev
+  chart:
+    spec:
+      chart: my-nginx
+      version: ">=0.2.0"
+      sourceRef:
+        kind: HelmRepository
+        name: my-nginx-repo
+        namespace: flux-system
+  values:
+    replicaCount: 2
+    image:
+      tag: "1.25.2"
+
+🧪 6. HelmRelease for QA (clusters/qa/my-nginx-helmrelease.yaml)
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: my-nginx
+  namespace: flux-system
+spec:
+  interval: 1m
+  releaseName: my-nginx-qa
+  targetNamespace: qa
+  chart:
+    spec:
+      chart: my-nginx
+      version: "0.2.0"
+      sourceRef:
+        kind: HelmRepository
+        name: my-nginx-repo
+        namespace: flux-system
+  values:
+    replicaCount: 1
+    image:
+      tag: "1.25.2"
+
+
+1. Create Kubernetes Secret for Artifactory Credentials
+bash
+Copy
+Edit
+kubectl create secret generic artifactory-credentials \
+  --namespace flux-system \
+  --from-literal=username='ARTIFACTORY_USERNAME' \
+  --from-literal=password='ARTIFACTORY_PASSWORD'
+Replace ARTIFACTORY_USERNAME and ARTIFACTORY_PASSWORD with your actual Artifactory login.
+
+2. HelmRepository pointing to Artifactory
+yaml
+Copy
+Edit
+# flux-system/helmrepo-my-nginx.yaml
+apiVersion: source.toolkit.fluxcd.io/v1beta2
+kind: HelmRepository
+metadata:
+  name: my-nginx-repo
+  namespace: flux-system
+spec:
+  interval: 1m
+  url: https://artifactory.example.com/artifactory/helm-repo/  # Your AF Helm repo URL
+  secretRef:
+    name: artifactory-credentials
+3. HelmRelease for Dev (auto-update latest >= 0.2.0)
+yaml
+Copy
+Edit
+# clusters/dev/my-nginx-helmrelease.yaml
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: my-nginx
+  namespace: flux-system
+spec:
+  interval: 1m
+  releaseName: my-nginx-dev
+  targetNamespace: dev
+  chart:
+    spec:
+      chart: my-nginx
+      version: ">=0.2.0"
+      sourceRef:
+        kind: HelmRepository
+        name: my-nginx-repo
+        namespace: flux-system
+  values:
+    replicaCount: 2
+    image:
+      tag: "1.25.2"
+4. HelmRelease for QA (fixed version 0.2.0)
+yaml
+Copy
+Edit
+# clusters/qa/my-nginx-helmrelease.yaml
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: my-nginx
+  namespace: flux-system
+spec:
+  interval: 1m
+  releaseName: my-nginx-qa
+  targetNamespace: qa
+  chart:
+    spec:
+      chart: my-nginx
+      version: "0.2.0"
+      sourceRef:
+        kind: HelmRepository
+        name: my-nginx-repo
+        namespace: flux-system
+  values:
+    replicaCount: 1
+    image:
+      tag: "1.25.2"
+5. Summary
+Resource	Purpose
+artifactory-credentials Secret	Stores Artifactory username/password
+HelmRepository	Connects Flux to your Artifactory Helm repo
+HelmRelease (dev)	Auto-updates to latest chart version matching >=0.2.0
+HelmRelease (qa)	Pinned to exact chart version 0.2.0
