@@ -200,3 +200,27 @@ def refresh_kerberos_ticket(keytab_path=None, keytab_b64=None, principal=None, c
                 os.remove(temp_keytab_path)
             except OSError:
                 pass
+
+
+from api4jenkins import Jenkins
+
+jenkins = Jenkins('http://jenkins-url', auth=('user', 'api_token'))
+cred_config_url = 'credentials/store/system/domain/_/credential/my-cred-id/config.xml'
+
+resp = jenkins.raw_session.get(cred_config_url)
+print(resp.text)  # XML config (password/secret hidden)
+
+resp = jenkins.raw_session.post(
+    cred_config_url,
+    headers={'Content-Type': 'application/xml'},
+    data=updated_xml_string
+)
+print(resp.status_code)
+
+
+<org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl>
+  <scope>GLOBAL</scope>
+  <id>my-secret-text-id</id>
+  <description>Updated secret description</description>
+  <secret>newSecretTextValue</secret>
+</org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl>
