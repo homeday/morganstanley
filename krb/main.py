@@ -224,3 +224,32 @@ print(resp.status_code)
   <description>Updated secret description</description>
   <secret>newSecretTextValue</secret>
 </org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl>
+
+
+apiVersion: security.openshift.io/v1
+kind: SecurityContextConstraints
+metadata:
+  name: jenkins-agent-scc
+allowPrivilegedContainer: false
+allowHostNetwork: false
+allowHostPorts: false
+allowHostPID: false
+allowHostIPC: false
+allowHostDirVolumePlugin: false
+readOnlyRootFilesystem: false
+runAsUser:
+  type: MustRunAsRange
+seLinuxContext:
+  type: MustRunAs
+fsGroup:
+  type: MustRunAs
+supplementalGroups:
+  type: RunAsAny
+volumes:
+  - configMap
+  - emptyDir
+  - secret
+  - projected
+  - persistentVolumeClaim
+users:
+  - system:serviceaccount:jenkins:jenkins-agent-sa
