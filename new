@@ -1,0 +1,25 @@
+Field	Controls	Common Use Case	Typical Setting in OpenShift
+fsGroup	Group ID for volume ownership	Shared volumes, PVCs	MustRunAsRange
+supplementalGroups	Additional GIDs for container	Shared resources, file access	RunAsAny or MustRunAsRange
+seLinuxContext	SELinux label context	Namespace isolation, RHEL hardening	MustRunAs or MustRunAsRange
+
+💡 In Practice
+OpenShift’s restricted SCC (the default for unprivileged pods) uses:
+
+runAsUser: MustRunAsRange
+
+fsGroup: MustRunAsRange
+
+supplementalGroups: RunAsAny
+
+seLinuxContext: MustRunAs
+
+This ensures:
+
+Pods run with UIDs and GIDs in a project-specific range.
+
+SELinux labels isolate namespaces.
+
+Volumes are owned by appropriate group IDs.
+
+
