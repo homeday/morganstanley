@@ -1,0 +1,56 @@
+pipeline {
+    agent any
+    
+    environment {
+        SECRET_KEY = credentials('aes-secret-key') // 32字节
+        INIT_VECTOR = credentials('aes-iv')        // 16字节
+    }
+    
+    stages {
+        stage('Safe Encrypt') {
+            steps {
+                script {
+                    // 使用 Jenkins 安全的 Base64 编码
+                    def plainText = "Secret Data"
+                    
+                    // 加密方法（沙箱安全）
+                    def encrypted = encryptSafe(plainText, env.SECRET_KEY, env.INIT_VECTOR)
+                    env.ENCRYPTED_TEXT = encrypted
+                    
+                    echo "Encrypted: ${encrypted.take(10)}..." // 显示部分避免暴露
+                }
+            }
+        }
+    }
+}
+
+// 沙箱安全的加密方法
+def encryptSafe(String plainText, String secretKey, String iv) {
+    // 使用 Jenkins 内置的 Base64 编码避免安全限制
+    def base64 = org.apache.commons.codec.binary.Base64
+    
+    // 使用批准的加密库
+    def cipher = javax.crypto.Cipher.getInstance("AES/CBC/PKCS5Padding")
+    def keySpec = new javax.crypto.spec.SecretKeySpec(secretKey.getBytes("UTF-8"), "AES")
+    def ivSpec = new javax.crypto.spec.IvParameterSpec(iv.getBytes("UTF-8"))
+    
+    cipher.init(javax.crypto.Cipher.ENCRYPT_MODE, keySpec, ivSpec)
+    byte[] encrypted = cipher.doFinal(plainText.getBytes("UTF-8"))
+    
+    return base64.encodeBase64String(encrypted)
+}
+
+stage('Decrypt') {
+    steps {
+        sh '''
+            #!/bin/bash
+            echo "Decrypting with OpenSSL..."
+            
+            DECRYPTED=$(echo -n "$ENCRYPTED_TEXT" | base64 -d | openssl enc -d -aes-256-cbc \
+                -K $(echo -n "$SECRET_KEY" | xxd -p) \
+                -iv $(echo -n "$INIT_VECTOR" | xxd -p))
+            
+            echo "Decrypted: ${DECRYPTED:0:10}..." # 显示部分
+        '''
+    }
+}
