@@ -1,85 +1,119 @@
-flowchart TD
-    JC[Jenkins Controller]
-    API[Kubernetes API Server]
+%% flowchart TD
+%%     JC[Jenkins Controller]
+%%     API[Kubernetes API Server]
 
-    subgraph Pod [Agent Pod]
-        direction TB
-        WorkspaceVol[/emptyDir (Shared Workspace)/]
-        TGTVol[/emptyDir (Shared TGT Volume)/]
-        KeytabVol[/Volume: /keytab (from Jenkins-decoded Secret)/]
+%%     subgraph Pod [Agent Pod]
+%%         direction TB
+%%         WorkspaceVol["/emptyDir [Shared Workspace]/"]
+%%         TGTVol["/emptyDir [Shared TGT Volume]/"]
+%%         KeytabVol["/Volume: /keytab [from Jenkins-decoded Secret]/"]
 
-        Init[Init Container<br/> (Get TGT from Keytab)]
-        JNLP[JNLP Container]
-        APP[App Container]
+%%         Init["Init Container<br/> (Get TGT from Keytab)"]
+%%         JNLP[JNLP Container]
+%%         APP[App Container]
 
-        Init -- mounts --> KeytabVol
-        Init -- mounts --> TGTVol
-        APP -- mounts --> TGTVol
-        JNLP -- mounts --> WorkspaceVol
-        APP -- mounts --> WorkspaceVol
-    end
+%%         Init -- mounts --> KeytabVol
+%%         Init -- mounts --> TGTVol
+%%         APP -- mounts --> TGTVol
+%%         JNLP -- mounts --> WorkspaceVol
+%%         APP -- mounts --> WorkspaceVol
+%%     end
 
-    JC -->|Uses credential to decode keytab| JC
-    JC -->|Injects as secret/volume in pod| API
-    API -->|Create Pod with init and app containers| Pod
-    Init -->|Reads keytab, gets TGT| TGTVol
-    JNLP -->|Connects to Jenkins Controller| JC
-    JC -->|Send job instructions| APP
-    APP -->|Report job result| JC
-    JC -->|Request pod termination| API
-    API -->|Delete Pod| Pod
+%%     JC -->|Uses credential to decode keytab| JC
+%%     JC -->|Injects as secret/volume in pod| API
+%%     API -->|Create Pod with init and app containers| Pod
+%%     Init -->|Reads keytab, gets TGT| TGTVol
+%%     JNLP -->|Connects to Jenkins Controller| JC
+%%     JC -->|Send job instructions| APP
+%%     APP -->|Report job result| JC
+%%     JC -->|Request pod termination| API
+%%     API -->|Delete Pod| Pod
 
 
-flowchart TD
-    JC[Jenkins Controller]
-    API[Kubernetes API Server]
+%% flowchart TD
+%%     JC[Jenkins Controller]
+%%     API[Kubernetes API Server]
 
-    subgraph CronJob [Kerberos TGT Refresher]
-        CRON[CronJob]
-        SECRET[K8s Secret (TGT)]
-        CRON -->|Refresh TGT| SECRET
-    end
+%%     subgraph CronJob [Kerberos TGT Refresher]
+%%         CRON[CronJob]
+%%         SECRET[K8s Secret (TGT)]
+%%         CRON -->|Refresh TGT| SECRET
+%%     end
 
-    subgraph Pod [Agent Pod]
-        direction TB
-        Volume[/emptyDir (Shared Workspace)/]
-        TGTVol[/Volume: /tgt (from Secret)/]
-        JNLP[JNLP Container]
-        APP[App Container]
-        JNLP -- mounts --> Volume
-        APP -- mounts --> Volume
-        APP -- mounts --> TGTVol
-    end
+%%     subgraph Pod [Agent Pod]
+%%         direction TB
+%%         Volume[/emptyDir (Shared Workspace)/]
+%%         TGTVol[/Volume: /tgt (from Secret)/]
+%%         JNLP[JNLP Container]
+%%         APP[App Container]
+%%         JNLP -- mounts --> Volume
+%%         APP -- mounts --> Volume
+%%         APP -- mounts --> TGTVol
+%%     end
 
-    JC -->|Request agent pod| API
-    API -->|Create Pod with containers| Pod
-    JNLP -->|Connects to Jenkins Controller| JC
-    JC -->|Send job instructions| APP
-    APP -->|Report job result| JC
-    JC -->|Request pod termination| API
-    API -->|Delete Pod| Pod
-    SECRET -->|Mounted as volume| TGTVol
+%%     JC -->|Request agent pod| API
+%%     API -->|Create Pod with containers| Pod
+%%     JNLP -->|Connects to Jenkins Controller| JC
+%%     JC -->|Send job instructions| APP
+%%     APP -->|Report job result| JC
+%%     JC -->|Request pod termination| API
+%%     API -->|Delete Pod| Pod
+%%     SECRET -->|Mounted as volume| TGTVol
 
 
 sequenceDiagram
     participant Jenkins as Jenkins Master
     participant K8s as Kubernetes Cluster
-    participant Pod as Jenkins Agent Pod
-    participant JNLP as JNLP Container
-    participant App as App Container
 
     Jenkins->>K8s: Request new agent pod from Pod Template
     K8s-->>Jenkins: Acknowledge pod creation
+
+    create participant Pod as Jenkins Agent Pod
     K8s->>Pod: Start agent pod with containers
     activate Pod
-    Pod->>JNLP: Start JNLP container
-    Pod->>App: Start App container
-    JNLP-->>Jenkins: Connect back to Jenkins master
+
+    create participant Init as Init Container (Kerberos AuthN)
+    Pod->>Init: Start Init Container
+
+    create participant Volume as Shared Volume (TGT)
+    Pod->>Volume: Create shared volume for TGT
+
+    Init->>Init: Read keytab from Jenkins secret
+    Init->>Volume: Write TGT to shared volume
+
+    
+    destroy Init
+    Pod->>Init: Terminate Init Container
+
+    create participant JNLP as JNLP Container
+    Pod->>JNLP: Start Jnlp Container
+
+    create participant App as App Container
+    Pod->>App: Start App Container
+
+    JNLP<<->>Jenkins: Long term connection to Jenkins master
+
     Jenkins->>App: Send job execution instructions
     App->>App: Execute job steps
+    App->>Volume: Access TGT for authentication
     App-->>Jenkins: Report job result
-    deactivate Pod
-    Jenkins->>K8s: Terminate agent pod
 
+    Jenkins->>K8s: Terminate agent pod
     K8s-->>Jenkins: Acknowledge pod termination
     K8s->>Pod: Delete agent pod
+
+    
+    destroy App
+    Pod-->>App: Delete App container
+
+    
+    destroy JNLP
+    Pod-->>JNLP: Delete JNLP container
+
+    
+    destroy Volume
+    Pod-->>Volume: Delete Volume
+
+    destroy Pod
+    K8s-->>Pod: Delete Pod
+
