@@ -94,9 +94,50 @@ sequenceDiagram
 
     destroy Pod
     K8s-->>Pod: Delete pod
+```
+```mermaid
+graph
+
+    Jenkins[Jenkins Controller]
+    subgraph K8s Cluster
+    
+    K8s[Kubernetes API Server]
+
+    
+    subgraph Pod["Agent Pod (created by Kubernetes)"]
+        Init["Init Container<br/>(Kerberos AuthN)"]
+        Volume["Shared Volume<br/>(emptyDir for TGT)"]
+        JNLP["JNLP Container"]
+        App["App Container"]
+    end
+    end
+    Jenkins -->|Create/Delete agent pod| K8s
+    
+    K8s -->|Creates/Deletes pod & volume| Pod
 
 
-Consequences
+    Init -->|kinit → writes TGT| Volume
+    App -->|Reads TGT| Volume
+
+    JNLP <-->|Long connection| Jenkins
+    App <-->|Gets job steps<br/>Reports results| Jenkins
+
+    %% Optional styling for clarity
+    style Pod fill:#f9f9f9,stroke:#bbb,stroke-width:1.5px
+    style Jenkins fill:#e0f7fa,stroke:#00796b,stroke-width:1px
+    style K8s fill:#e8f5e9,stroke:#388e3c,stroke-width:1px
+    style Init fill:#fff3e0,stroke:#fb8c00,stroke-width:1px
+    style JNLP fill:#ede7f6,stroke:#673ab7,stroke-width:1px
+    style App fill:#fce4ec,stroke:#d81b60,stroke-width:1px
+    style Volume fill:#eeeeee,stroke:#757575,stroke-width:1px
+
+
+```
+
+
+
+
+##Consequences
 Pros
 ✅ Elastic Scalability: Jenkins agents can be created and destroyed dynamically, based on actual workload.
 
