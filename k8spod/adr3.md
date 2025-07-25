@@ -136,6 +136,18 @@ graph
 
 
 
+## Resource Usage
+
+CKS has allocated 25 CPU cores and 50 GB of memory to us.
+
+Based on this allocation, two types of resource usage profiles are supported:
+
+| Type   | CPU Cores | Memory   | Count    |
+|--------|-----------|----------|----------|
+| Normal | 0.5       | 512 MB   | 10       |
+| Large  | 1         | 3 GB     | 10       |
+
+
 
 ##Consequences
 Pros
