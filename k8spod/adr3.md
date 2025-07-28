@@ -28,17 +28,18 @@ Additionally, for workloads requiring **Kerberos authentication**, we will incor
 ### Kerberos Authentication Flow
 
 1. **Keytab Injection**  
-   - A Base64-encoded keytab is stored as a Jenkins "Secret Text" credential.  
-   - When a pod is provisioned, the credential is loaded and injected into the initContainer via environment variable.
+   - A Base64-encoded keytab is stored as a Jenkins "Secret Text" credential.
+   - When a pod agent is provisioned, the shared library retrieves the credential and sets it as an environment variable in the initContainer's definition.
 
 2. **Kerberos InitContainer**  
-   - Uses a specialized image capable of Kerberos (`kinit`) authentication.  
-   - Decodes the keytab and runs `kinit` to obtain a Ticket Granting Ticket (TGT).  
-   - Writes the Kerberos cache (e.g., `/tmp/krb5cc_...`) into a shared `emptyDir` volume.
+   - Uses a specialized image capable of Kerberos (kinit) authentication.
+   - Decodes the keytab from the Base64 string in the environment variable (from step 1) into a temporary file.
+   - Runs kinit with the temporary file to obtain a Ticket Granting Ticket (TGT), storing it in the file path using the *KRB5CCNAME* environment variable.
+   - The file path (e.g., /tmp/krb5cc_...) is a shared emptyDir volume that can be mounted by other containers.
 
 3. **Application Container**  
    - The main application container mounts the same shared volume.  
-   - It accesses the Kerberos TGT and uses it to perform authenticated operations during job execution.
+   - It accesses the Kerberos TGT via environment variable *KRB5CCNAME* and uses it to perform authenticated operations during job execution.
 
 ### Sequence Diagram
 
