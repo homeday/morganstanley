@@ -92,3 +92,49 @@ pipeline {
     }
   }
 }
+
+import javax.crypto.*
+import javax.crypto.spec.*
+import java.security.*
+import java.nio.charset.StandardCharsets
+
+def decryptWithAESCBCAndHMAC(String encryptedHex, String masterKeyString) {
+    byte[] encryptedBytes = encryptedHex.decodeHex()
+
+    // Derive keys from master key
+    MessageDigest digest = MessageDigest.getInstance("SHA-256")
+    byte[] masterKey = masterKeyString.getBytes(StandardCharsets.UTF_8)
+
+    digest.update(masterKey)
+    digest.update("encryption".getBytes(StandardCharsets.UTF_8))
+    byte[] aesKey = digest.digest()
+
+    digest.reset()
+    digest.update(masterKey)
+    digest.update("authentication".getBytes(StandardCharsets.UTF_8))
+    byte[] hmacKey = digest.digest()
+
+    // Parse IV (16), Ciphertext, and HMAC (last 32)
+    byte[] iv = encryptedBytes[0..15]
+    byte[] hmacTag = encryptedBytes[-32..-1]
+    byte[] ciphertext = encryptedBytes[16..-33]
+
+    // Validate HMAC
+    Mac hmac = Mac.getInstance("HmacSHA256")
+    SecretKeySpec hmacKeySpec = new SecretKeySpec(hmacKey, "HmacSHA256")
+    hmac.init(hmacKeySpec)
+    byte[] computedTag = hmac.doFinal(iv + ciphertext)
+
+    if (!MessageDigest.isEqual(computedTag, hmacTag)) {
+        throw new SecurityException("HMAC verification failed: ciphertext may have been tampered with")
+    }
+
+    // Decrypt
+    Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
+    SecretKeySpec aesKeySpec = new SecretKeySpec(aesKey, "AES")
+    IvParameterSpec ivSpec = new IvParameterSpec(iv)
+    cipher.init(Cipher.DECRYPT_MODE, aesKeySpec, ivSpec)
+
+    byte[] plaintextBytes = cipher.doFinal(ciphertext)
+    return new String(plaintextBytes, StandardCharsets.UTF_8)
+}
