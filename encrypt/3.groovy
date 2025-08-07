@@ -138,3 +138,28 @@ spec:
       volumeMounts:
         - name: workdir
           mountPath: /workspace
+
+
+
+# Assuming you saved it as hex string
+ENC_HEX=...your result...
+
+# Extract IV, ciphertext, tag
+IV_HEX=${ENC_HEX:0:24}
+CT_TAG_HEX=${ENC_HEX:24}
+CT_HEX=${CT_TAG_HEX:0:-32}
+TAG_HEX=${CT_TAG_HEX: -32}
+
+# Decrypt
+echo "$CT_HEX" | xxd -r -p > ct.bin
+echo "$TAG_HEX" | xxd -r -p > tag.bin
+echo "$IV_HEX" | xxd -r -p > iv.bin
+
+openssl enc -d -aes-256-gcm \
+  -K $(echo -n "thisis32byteslongsecretkey123456" | xxd -p) \
+  -iv $(xxd -p iv.bin | tr -d '\n') \
+  -in ct.bin \
+  -out decrypted.txt \
+  -nosalt \
+  -tag $(xxd -p tag.bin | tr -d '\n')
+
