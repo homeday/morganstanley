@@ -71,3 +71,49 @@ PLAINTEXT=$(echo -n "$CIPHERTEXT_BIN" | openssl enc -d -aes-256-cbc \
     -iv $(echo -n "$IV_BIN" | od -A n -t x1 | tr -d ' \n'))
 
 echo "解密成功: $PLAINTEXT"
+
+---------------------------------------------
+#!/bin/bash
+
+# Replace these with your actual values
+KEY_HEX="603deb1015ca71be2b73aef0857d77811f352c073b6108d72d9810a30914dff4"
+
+# ENCRYPTED_HEX includes IV + ciphertext + HMAC concatenated as hex string
+ENCRYPTED_HEX="a4f4dfe19a92ff9d1578d30dff421f90904f9ff2d13c0ff050c602dbf3a36522b828f62b8c7ceea56790be9e4fd2d76d8d0e8ecf0c5d64b1dfdb179309b9e1b1735fd94d3d6c4e657f10dd4e5c142b6a"
+
+# Function: Convert hex string to binary
+hex_to_bin() {
+    echo "$1" | tr -d '\n ' | sed 's/../\\x&/g' | xargs printf "%b"
+}
+
+# Constants for lengths in hex chars
+IV_LEN=32      # 16 bytes * 2 hex chars
+HMAC_LEN=64    # 32 bytes * 2 hex chars
+
+# Extract IV (first 32 hex chars)
+IV_HEX="${ENCRYPTED_HEX:0:$IV_LEN}"
+
+# Extract HMAC (last 64 hex chars)
+HMAC_HEX="${ENCRYPTED_HEX: -$HMAC_LEN}"
+
+# Extract ciphertext (middle)
+CT_HEX="${ENCRYPTED_HEX:$IV_LEN:$((${#ENCRYPTED_HEX} - $IV_LEN - $HMAC_LEN))}"
+
+echo "IV: $IV_HEX"
+echo "HMAC: $HMAC_HEX"
+echo "Ciphertext: $CT_HEX"
+
+# Verify HMAC over IV + ciphertext
+iv_ct_bin=$( (hex_to_bin "$IV_HEX"; hex_to_bin "$CT_HEX") )
+
+computed_hmac=$(echo -n "$iv_ct_bin" | openssl dgst -sha256 -mac HMAC -macopt hexkey:$KEY_HEX | awk '{print $2}')
+
+if [ "$computed_hmac" != "$HMAC_HEX" ]; then
+    echo "❌ HMAC verification failed!"
+    exit 1
+else
+    echo "✅ HMAC verified."
+fi
+
+# Decrypt ciphertext
+echo -n "$(hex_to_bin "$CT_HEX")" | openssl enc -d -aes-256-cbc -K "$KEY_HEX" -iv "$IV_HEX" -nosalt
