@@ -117,3 +117,14 @@ fi
 
 # Decrypt ciphertext
 echo -n "$(hex_to_bin "$CT_HEX")" | openssl enc -d -aes-256-cbc -K "$KEY_HEX" -iv "$IV_HEX" -nosalt
+
+
+
+KEY_HEX="603deb1015ca71be2b73aef0857d77811f352c073b6108d72d9810a30914dff4a"
+IV_HEX="000102030405060708090a0b0c0d0e0f"
+CT_HEX="8ea2b7ca516745bfeafc49904b496089"
+# Convert ciphertext hex to binary and decrypt directly from stdin
+echo "$CT_HEX" | xxd -r -p | openssl enc -d -aes-256-cbc -K "$KEY_HEX" -iv "$IV_HEX" -nosalt
+
+
+echo "$CT_HEX" | sed 's/../\\x&/g' | xargs printf "%b" | openssl enc -d -aes-256-cbc -K "$KEY_HEX" -iv "$IV_HEX" -nosalt
