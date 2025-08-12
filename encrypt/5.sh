@@ -2,6 +2,11 @@
 
 # 增强版 keytab 解密脚本
 # 解决空字节和换行问题
+# ./decrypt_keytab.sh \
+#                             "$ENCRYPTED_KEYTAB" \
+#                             "$ENC_KEY" \
+#                             "$HMAC_KEY" \
+#                             "decrypted.keytab"
 
 # 输入参数
 ENCRYPTED_RESULT="$1"
