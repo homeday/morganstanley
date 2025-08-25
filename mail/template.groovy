@@ -16,3 +16,21 @@ return """
   </body>
 </html>
 """
+
+
+
+def emailContent() {
+  return '''
+  -------------------------------------------------------------------------------
+  Build ${ENV,var="JOB_NAME"} #${BUILD_NUMBER} ${BUILD_STATUS}
+  URL: ${BUILD_URL}
+  -------------------------------------------------------------------------------
+  Changes:
+  ${CHANGES}
+  -------------------------------------------------------------------------------
+  Failed Tests:
+  ${FAILED_TESTS,maxTests=500,showMessage=false,showStack=false}
+  -------------------------------------------------------------------------------
+  For complete test report and logs see https://nightlies.apache.org/cassandra/${JOB_NAME}/${BUILD_NUMBER}/
+  '''
+}
