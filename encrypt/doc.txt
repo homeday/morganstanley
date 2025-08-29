@@ -1,0 +1,55 @@
+by default, any commands in the containers are launched by a local account, however, for the Train commands,
+it needs kerberos Authication. to resolve this problem, we recommand you use approach below:
+
+Create a server account (password unknown) and generate a keytab.
+
+Convert the keytab to Base64:
+
+base64 -o keytabfile
+
+
+Save the Base64 string in Jenkins as a secret text credential. Name the credential after the server account.
+
+When you start the agent, pass the credential name to your method with keytab_cred_id.
+
+The shared library sets up an init container that runs kinit and stores the TGT in a shared volume.
+
+Your agent can now use Kerberos authentication.
+
+
+Kerberos Authentication Setup for Training Commands
+
+By default, all commands in the containers are executed under a local account. However, the training commands require Kerberos authentication. To address this requirement, we recommend using the approach described above.
+
+
+
+By default, all commands in the containers are executed under a local account. However, the training commands require Kerberos authentication. To enable this, follow the steps below:
+
+Create a server account and keytab
+
+Create a server account with an unknown password and generate a keytab.
+
+Encode the keytab
+
+Convert the keytab to a Base64-encoded string:
+
+base64 keytabfile > keytabfile.b64
+
+
+Store in Jenkins credentials
+
+Save the encoded string as a Jenkins secret text credential in your project folder.
+
+Name the credential after the corresponding server account.
+
+Pass the credential to the agent
+
+When launching the agent, pass the credential name to the method using the keytab_cred_id argument.
+
+Init container setup
+
+The shared library will provision an init container that runs the kinit command and writes the TGT into a shared volume.
+
+Run training commands
+
+After initialization, all subsequent commands in the agent can use Kerberos authentication.
