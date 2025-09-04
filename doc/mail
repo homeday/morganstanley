@@ -1,0 +1,131 @@
+Contributing a Podman Image for Jenkins K8s Agent
+
+If you would like to contribute a custom Podman image that can be used as a Jenkins Kubernetes agent, please follow the steps below.
+
+1. Build Your Podman Image
+
+Create a Dockerfile (or Containerfile) that includes the required tools and configurations for the Jenkins agent.
+
+Make sure the image is based on a lightweight but compatible base (e.g., ubi, alpine, or debian) and contains all necessary build/runtime dependencies.
+
+Example:
+
+FROM registry.fedoraproject.org/fedora:latest
+
+# Install dependencies required by Jenkins jobs
+RUN dnf install -y \
+    git \
+    podman \
+    make \
+    && dnf clean all
+
+2. Test the Image Locally
+
+Before contributing, verify that the image works properly as a Jenkins agent:
+
+podman run -it <your-image> bash
+
+
+Check that:
+
+Jenkins agent requirements (Java, tools, etc.) are present.
+
+Your build/test workflow runs successfully inside the container.
+
+3. Tag and Push Your Image
+
+Tag the image properly before pushing:
+
+podman tag <your-image> quay.io/<org>/<image-name>:<tag>
+podman push quay.io/<org>/<image-name>:<tag>
+
+4. Update Jenkins Configuration
+
+Once your image is available in a container registry, update the Jenkins Kubernetes plugin configuration so Jenkins can use it as an agent pod.
+
+You may need to:
+
+Add the image name to the Jenkins podTemplate definition.
+
+Ensure resource requests/limits fit within the Kubernetes cluster.
+
+Example snippet:
+
+spec:
+  containers:
+    - name: jnlp
+      image: quay.io/<org>/<image-name>:<tag>
+      tty: true
+
+5. Submit Your Contribution
+
+Open a pull request to this repository.
+
+Include your Dockerfile and documentation updates.
+
+Clearly describe the purpose of your image and what jobs it supports.
+
+Configuring Jenkins CKS Agent in Your Own Kubernetes Namespace
+
+This guide explains how to configure a Jenkins CKS agent in your own Kubernetes namespace, instead of using the shared MSDE namespace.
+
+---
+local: true
+depth: 2
+---
+
+1. Prepare the Environment
+1.1 Open the Firewall Between Jenkins and Your Kubernetes Cluster
+
+Currently, only the firewall between the Jenkins production controller and the cshgms3 Kubernetes cluster is open.
+
+If your namespace is in a different cluster or in cshgms3 but not covered, you must request a firewall rule to be opened between your Jenkins controller and your cluster.
+
+1.2 Create Kubernetes Resources in Your Namespace
+
+Service Account
+A service account is required to pull Podman images from Artifactory when creating Kubernetes pods.
+
+CronJob for Kerberos Authentication
+Unlike the MSDE CKS agent, you do not need to follow these manual Kerberos authentication steps
+.
+Instead, follow the Kerberos CronJob guide
+ to automate authentication in your namespace.
+
+An example implementation using a Helm repository is provided below:
+
+# Example to be added here
+
+1.3 Add Jenkins System ID to Your TAC Group
+
+The Jenkins controller uses system ID abc (from the Jenkins GRN) to perform operations in your namespace, such as creating pods.
+
+You must add this ID to your TAC group bcd to grant the required permissions.
+
+2. Request Namespace Configuration in Jenkins
+
+Submit a request through JSM to the AI team with the following details:
+
+Namespace name
+
+Jenkins folder/jobs that should run in this namespace
+
+3. Configure Your Jenkinsfile
+
+In your pipeline, configure the agent to use your namespace. For example:
+
+pipeline {
+    agent {
+        kubernetes {
+            // specify your namespace and pod template here
+        }
+    }
+    stages {
+        stage('Build') {
+            steps {
+                echo "Running build in custom namespace"
+            }
+        }
+    }
+}
+
