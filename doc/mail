@@ -129,3 +129,55 @@ pipeline {
     }
 }
 
+namespace in jenkins GRN
+princaple name
+
+
+
+templates:
+  ".dockerconfigjson":
+    text: |-
+      {{- $username := .Values.vso.imagePullSecret.username -}}
+      {{- $auths := dict -}}
+
+      {{- range $host := .Values.vso.imagePullSecret.afHosts }}
+        {{- $keyPath := printf "%s/%s@%s" (.Values.vso.vaultMsaPath) $username $host -}}
+        {{- $password := (get .Secrets $keyPath) -}}
+        {{- $config := dict "username" $username "password" $password -}}
+        {{- $_ := set $config "auth" (list $username ":" $password | join "" | b64enc) -}}
+        {{- $_ := set $auths $host $config -}}
+      {{- end }}
+
+      {{- mustToJson (dict "auths" $auths) -}}
+
+
+templates:
+  ".dockerconfigjson":
+    text: |-
+      {{- $username := .Values.vso.imagePullSecret.username -}}
+      {{- $auths := dict -}}
+
+      {{- range $afHost := .Values.vso.imagePullSecret.afHosts }}
+        {{- $keyPath := printf "%s@%s" $username $afHost -}}
+        {{- $password := (get .Secrets $keyPath) -}}
+        {{- $config := dict "username" $username "password" $password -}}
+        {{- $_ := set $config "auth" (list $username ":" $password | join "" | b64enc) -}}
+        {{- $_ := set $auths $afHost $config -}}
+      {{- end }}
+
+      {{- mustToJson (dict "auths" $auths) -}}
+
+
+
+templates:
+  ".dockerconfigjson":
+    text: |-
+      {{- $username := .Values.vso.imagePullSecret.username -}}
+      {{- $auths := dict -}}
+      {{- range $host := .Values.vso.imagePullSecret.afHosts }}
+        {{- $password := (get .Secrets (printf "%s@%s" $username $host)) -}}
+        {{- $config := dict "username" $username "password" $password -}}
+        {{- $_ := set $config "auth" (list $username ":" $password | join "" | b64enc) -}}
+        {{- $_ := set $auths $host $config -}}
+      {{- end }}
+      {{- mustToJson (dict "auths" $auths) -}}
