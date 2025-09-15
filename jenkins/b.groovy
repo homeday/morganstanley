@@ -143,3 +143,12 @@ class CKSAgentConfHelper implements Serializable {
         script.libraryResource("com/cn/ms/msde/jenkins/podtemplates/${agentType}.yaml")
     }
 }
+
+
+import org.csanchez.jenkins.plugins.kubernetes.KubernetesCloud
+
+def getK8sNamespace(String cloudName) {
+    def jenkins = jenkins.model.Jenkins.get()
+    def cloud = jenkins.clouds.getByName(cloudName) as KubernetesCloud
+    return cloud?.namespace ?: "default"
+}
