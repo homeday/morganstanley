@@ -1,0 +1,95 @@
+2. Using java.util.logging (outside Jenkins)
+
+If you run Jenkins with a custom Java logging configuration, add this to logging.properties:
+
+org.codelibs.spnego.level = FINEST
+
+
+Then start Jenkins with:
+
+java -Djava.util.logging.config.file=logging.properties -jar jenkins.war
+
+3. Log Output Example
+
+Once enabled, you’ll see messages like:
+
+INFO  org.codelibs.spnego.SpnegoProvider#negotiate: received Negotiate header
+FINE  org.codelibs.spnego.SpnegoAuthenticator: validating service ticket
+WARNING  org.codelibs.spnego.SpnegoProvider: NTLM token detected, falling back
+
+
+These are very useful for troubleshooting things like:
+
+Browser not sending a token.
+
+SPN mismatch.
+
+NTLM vs Kerberos fallback.
+
+4. Extra Debugging (JVM Kerberos layer)
+
+Sometimes SPNEGO logs aren’t enough. You can also enable the JDK’s Kerberos/GSS debug:
+
+-Dsun.security.krb5.debug=true
+-Djava.security.debug=gssloginconfig,configfile,logincontext,configparser
+
+
+This will dump Kerberos ticket requests, KDC replies, SPN resolution etc. into Jenkins logs.
+
+Example Jenkins startup with both logs enabled
+
+If you start Jenkins via jenkins.war:
+
+java \
+  -Dsun.security.krb5.debug=true \
+  -Djava.util.logging.config.file=/var/jenkins_home/logging.properties \
+  -jar jenkins.war
+
+1. sun.security.krb5.debug=true
+
+This tells the JVM to dump all Kerberos protocol internals (ticket requests, SPN matches, KDC replies).
+
+2. java.util.logging.config.file
+
+Here you give Jenkins a logging.properties file that enables org.codelibs.spnego (or whatever package name the plugin uses).
+
+Create /var/jenkins_home/logging.properties like this:
+
+handlers = java.util.logging.ConsoleHandler
+java.util.logging.ConsoleHandler.level = FINEST
+java.util.logging.ConsoleHandler.formatter = java.util.logging.SimpleFormatter
+
+# SPNEGO plugin logs
+org.codelibs.spnego.level = FINEST
+
+
+This ensures SPNEGO library messages are shown at the same time as Kerberos protocol traces.
+
+3. Jenkins log output
+
+When both are enabled, your jenkins.log will include:
+
+SPNEGO plugin flow (e.g. “received Negotiate header”, “falling back to NTLM”).
+
+Kerberos protocol debug (e.g. “>>> KDCCommunication: kdc=dc01.company.com TCP:88”).
+
+That gives you the application logic + protocol detail together.
+
+✅ Bottom line: Yes, you can enable both. Just combine -Dsun.security.krb5.debug=true with a logging.properties file that sets org.codelibs.spnego.level=FINEST.
+
+# Send logs to console
+handlers = java.util.logging.ConsoleHandler
+java.util.logging.ConsoleHandler.level = ALL
+java.util.logging.ConsoleHandler.formatter = java.util.logging.SimpleFormatter
+
+# SPNEGO library (codelibs)
+org.codelibs.spnego.level = ALL
+
+# Jenkins Kerberos plugin itself
+org.jenkinsci.plugins.kerberos.level = ALL
+
+# (Optional) Jenkins servlet auth package
+hudson.security.level = FINE
+
+# Root logger (keep moderate to avoid log spam)
+.level = INFO
