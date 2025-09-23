@@ -1,0 +1,981 @@
+regarding Jenkins kerberos sso plugin, i have configured it however, when login with browser in windows os, the page is crashed, but when using curl in windows machine, it can work. what problem there might be?
+ChatGPT said:
+
+Got it — you’ve set up the Jenkins Kerberos (SPNEGO) SSO plugin, curl with Kerberos auth works from your Windows machine, but when you try to log in via browser (also on Windows), the Jenkins page crashes.
+
+That symptom usually means the HTTP/Kerberos negotiation between the browser and Jenkins isn’t completing correctly, even though curl can complete it. A few common causes:
+
+1. Browser configuration
+
+Internet Explorer / Edge / Chrome on Windows: They only attempt Kerberos if the Jenkins URL is in the Local Intranet Zone (or explicitly configured for Integrated Authentication).
+
+For Chrome/Edge: check the Windows Internet Options → Security → Local Intranet → Sites → Advanced, add your Jenkins URL.
+
+Or launch Chrome with --auth-server-whitelist="*.yourdomain.com" --auth-negotiate-delegate-whitelist="*.yourdomain.com".
+
+If the browser isn’t attempting Kerberos, Jenkins might be sending a WWW-Authenticate: Negotiate header, but the browser falls back incorrectly, resulting in a broken page.
+
+2. SPN (Service Principal Name) mismatch
+
+The SPN that you registered in Active Directory must match exactly the hostname you use in the browser.
+Example:
+
+SPN registered: HTTP/jenkins.example.com@EXAMPLE.COM
+
+If you open Jenkins as http://jenkins or http://10.0.0.5, Kerberos will fail.
+
+Curl may work if you specify --negotiate -u : with the correct hostname, but the browser will fail if you’re not using the SPN-matching FQDN.
+
+3. HTTP vs HTTPS
+
+If you bound the SPN to HTTP/jenkins.example.com, it covers both HTTP and HTTPS, but if there’s a mismatch (e.g. SPN only for shortname or only for https port), browsers can choke while curl works when forced.
+
+4. Browser crash = plugin response?
+
+Sometimes it’s not the browser crashing, but Jenkins serving a bad page:
+
+Check Jenkins jenkins.log when you reproduce with browser.
+
+If you see something like GSSException: No valid credentials or SPNEGO negotiation failed, then the plugin is failing the handshake.
+
+✅ Quick debugging steps:
+
+Run the browser with developer tools open (F12 → Network tab). Check the 401/Negotiate headers.
+
+Compare to curl -v --negotiate -u : http://jenkins.example.com/ output — see if the browser even sends the Authorization: Negotiate ... header.
+
+Check Jenkins logs for Kerberos/SPNEGO errors at the same time.
+
+Make sure Jenkins URL is in browser’s trusted zone and SPN matches exactly.
+
+Do you want me to give you an exact checklist for Windows browser setup for Kerberos SSO with Jenkins, so you can test point by point?
+
+You said:
+yes
+ChatGPT said:
+
+Perfect 👍 — here’s a step-by-step checklist to debug Jenkins Kerberos SSO with a Windows browser. This covers the browser, Jenkins plugin, and AD/SPN setup:
+
+✅ Windows Browser Setup
+1. Add Jenkins URL to Intranet Zone
+
+Go to Control Panel → Internet Options → Security → Local Intranet → Sites → Advanced
+
+Add your Jenkins URL (FQDN you’ll actually use, e.g. http://jenkins.example.com)
+
+This tells IE/Edge/Chrome to attempt Integrated Windows Auth (Kerberos/NTLM).
+
+⚠️ Chrome/Edge inherit IE settings.
+
+2. Configure Chrome/Edge explicitly (if needed)
+
+You can force Chrome/Edge to use Kerberos by starting with:
+
+chrome.exe --auth-server-whitelist="*.example.com" --auth-negotiate-delegate-whitelist="*.example.com"
+
+
+Replace example.com with your domain.
+
+3. Test with Firefox
+
+In about:config:
+
+network.negotiate-auth.trusted-uris = .example.com
+
+network.negotiate-auth.delegation-uris = .example.com
+
+Browse to http://jenkins.example.com — if it works here but not Chrome/Edge, it’s a Windows zone policy issue.
+
+✅ SPN & AD Setup
+4. Verify SPN matches Jenkins host
+
+Run on a domain controller:
+
+setspn -L jenkins-service-account
+
+
+You should see something like:
+
+HTTP/jenkins.example.com
+
+
+⚠️ The FQDN in the SPN must match exactly the URL you type in the browser.
+
+If you open http://jenkins, Kerberos may fail (works with NTLM, but plugin may crash).
+
+Always test with the registered FQDN.
+
+5. Check Keytab (if used)
+
+If you’re using a keytab with the plugin:
+
+klist -k -t -K jenkins.keytab
+
+
+Confirm the key matches the SPN you registered.
+
+✅ Jenkins Side
+6. Check Jenkins logs
+
+Enable Kerberos/SPNEGO debug:
+Add to JENKINS_JAVA_OPTIONS:
+
+-Dsun.security.krb5.debug=true -Djava.security.debug=gssloginconfig,configfile,configparser,logincontext,config
+
+
+Reproduce login from browser.
+
+Look for GSSException or No valid credentials.
+
+7. Verify plugin config
+
+In Manage Jenkins → Configure Global Security → “Kerberos SSO” section:
+
+Make sure Server principal matches your SPN.
+
+Make sure the realm and KDC match AD settings.
+
+If using keytab, confirm path is correct and Jenkins can read it.
+
+✅ Debug Flow
+
+Open DevTools → Network tab in browser → reload Jenkins.
+
+You should see a 401 Negotiate response from Jenkins.
+
+Then your browser should send back Authorization: Negotiate YIIB...
+
+If that header never appears → browser config issue.
+
+If it appears but Jenkins logs SPNEGO negotiation failed → SPN mismatch or keytab issue.
+
+🔍 If curl works but browser doesn’t:
+
+90% of the time it’s browser not trying Kerberos (zone settings).
+
+9% of the time it’s SPN mismatch (browser uses shortname, curl uses FQDN).
+
+1% other (plugin bug, HTTPS cert mismatch, etc).
+
+👉 Do you want me to write you a minimal curl vs browser packet trace example (so you know exactly what headers to compare)? That way you can pinpoint if it’s the browser not sending the Kerberos ticket or Jenkins rejecting it.
+
+You said:
+i am using Edge, therefore for the configuration, i need to pass  --auth-server-whitelist="*.example.com" --auth-negotiate-delegate-whitelist="*.example.com" to see the result? and my url is jenkins.ai.ms.com.cn, and my domain is cod.ms.com.cn. is it relevant?
+ChatGPT said:
+
+Good, thanks for the details 👌
+
+You’re using Edge with Jenkins at:
+
+Jenkins URL: http://jenkins.ai.ms.com.cn
+
+Domain (AD realm): cod.ms.com.cn
+
+1. About the Edge flags
+
+Yes — Edge is Chromium-based, so those two flags control whether Kerberos is attempted:
+
+msedge.exe --auth-server-whitelist="*.ms.com.cn" --auth-negotiate-delegate-whitelist="*.ms.com.cn"
+
+
+--auth-server-whitelist → tells Edge which servers are allowed to use Integrated Auth (Kerberos/NTLM).
+
+--auth-negotiate-delegate-whitelist → tells Edge which servers are trusted for credential delegation (not always needed for Jenkins, but safe to include).
+
+👉 In your case, *.ms.com.cn covers both jenkins.ai.ms.com.cn and cod.ms.com.cn.
+
+2. Windows Integrated Auth “zones”
+
+Even without flags, Edge will only attempt Kerberos if the site is in the Local Intranet Zone (Windows setting).
+
+Go to Internet Options → Security → Local Intranet → Sites → Advanced
+
+Add http://jenkins.ai.ms.com.cn there.
+
+3. SPN relevance
+
+The domain you log into (cod.ms.com.cn) doesn’t need to match the Jenkins subdomain (ai.ms.com.cn) — but:
+
+You must register an SPN for the exact hostname Jenkins is accessed with.
+
+setspn -S HTTP/jenkins.ai.ms.com.cn jenkins-service-account
+
+
+If you open Jenkins as http://jenkins (shortname) or http://ip-address, Kerberos fails because SPN mismatch.
+
+curl succeeds if you explicitly specify --negotiate against the FQDN that matches the SPN.
+
+4. What I recommend testing
+
+Verify SPN:
+
+setspn -L jenkins-service-account
+
+
+Make sure you see HTTP/jenkins.ai.ms.com.cn
+
+Put http://jenkins.ai.ms.com.cn into Windows Intranet zone.
+
+Try Edge normally — open DevTools → Network. Do you see Authorization: Negotiate ... in the request headers?
+
+If not → launch Edge with the flags above.
+
+🔑 Key point: the browser must send a Kerberos ticket for HTTP/jenkins.ai.ms.com.cn. If that SPN is missing or Edge doesn’t trust the host, Jenkins will crash after failed handshake (while curl works).
+
+Do you want me to write you the exact Edge shortcut command line you can create (so you don’t need to run it manually each time)?
+
+You said:
+yes, do i need to run the edge with adminsitrator?
+ChatGPT said:
+
+Nope 👍 — you don’t need to run Edge as Administrator for this. The Kerberos ticket exchange happens under your logged-in Windows user, so as long as you’re domain-joined and logged in with a valid domain account, Kerberos auth works fine without elevation.
+
+🔹 How to set up a permanent Edge shortcut with Kerberos flags
+
+Right-click on your desktop → New → Shortcut.
+
+Browse to Edge (usually here):
+
+"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
+
+
+In the target box, append the Kerberos flags:
+
+"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --auth-server-whitelist="*.ms.com.cn" --auth-negotiate-delegate-whitelist="*.ms.com.cn"
+
+
+Name it something like Edge (Kerberos for Jenkins).
+
+Double-click this shortcut whenever you want to test Kerberos SSO with Jenkins.
+
+🔹 Verification steps after launching
+
+Go to http://jenkins.ai.ms.com.cn.
+
+Open F12 → Network tab.
+
+Refresh the page.
+
+Look for the request to /login or / → it should now contain a header like:
+
+Authorization: Negotiate YIIB... (base64 blob)
+
+
+If you see that → Edge is sending the Kerberos ticket.
+
+⚠️ If you still don’t see the Authorization: Negotiate header, the issue is SPN mismatch — check with:
+
+setspn -L jenkins-service-account
+
+
+and confirm HTTP/jenkins.ai.ms.com.cn exists.
+
+👉 Do you want me to also give you the Windows Internet Options method (without shortcut/flags), so you can make this work system-wide for Edge/Chrome without custom startup?
+
+You said:
+ok, and i also check the plugin log, and found authorization header was missing/null which should be from the java package package org.codelibs.spnego and its method public static SpnegoAuthScheme getAuthScheme(final String header)
+ChatGPT said:
+
+That’s a really useful log clue 👍
+
+authorization header was missing/null from org.codelibs.spnego.SpnegoAuthScheme.getAuthScheme(...) means Jenkins never even received the Authorization: Negotiate <token> header from your browser.
+
+That lines up exactly with what we were suspecting:
+
+🔍 What this means
+
+Jenkins is replying with WWW-Authenticate: Negotiate
+
+But your Edge browser never sends back the Authorization: Negotiate ... header
+
+So the plugin logs: authorization header was missing/null
+
+When you use curl --negotiate -u : http://jenkins.ai.ms.com.cn, curl does send the header, so Jenkins proceeds fine.
+
+So the plugin itself is not at fault — the browser simply isn’t providing the Kerberos ticket.
+
+✅ Causes for browser not sending the header
+
+Edge/Chrome not configured for Kerberos
+
+Needs the --auth-server-whitelist flag or Windows Internet Options (Intranet zone).
+
+SPN mismatch
+
+SPN must exist for HTTP/jenkins.ai.ms.com.cn
+
+And you must browse Jenkins with that exact hostname.
+
+If you use just http://jenkins or an IP → no Kerberos, no header.
+
+Cross-domain trust
+
+Your user logs into domain cod.ms.com.cn
+
+Jenkins host is jenkins.ai.ms.com.cn
+
+If ai.ms.com.cn and cod.ms.com.cn are different AD forests without trust → ticket won’t be issued.
+
+🔧 What to do next
+
+Verify SPN:
+
+setspn -L jenkins-service-account
+
+
+Must include:
+
+HTTP/jenkins.ai.ms.com.cn
+
+
+Add http://jenkins.ai.ms.com.cn to Local Intranet Zone in Internet Options.
+
+Or launch Edge with:
+
+"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --auth-server-whitelist="*.ms.com.cn" --auth-negotiate-delegate-whitelist="*.ms.com.cn"
+
+
+Open DevTools (F12) → Network → refresh page → check if Authorization: Negotiate ... is now present.
+
+👉 Would you like me to show you a side-by-side example of what the request/response headers should look like (working vs failing case), so you can compare your browser trace with curl?
+
+You said:
+for this command setspn -L jenkins-service-account  where do i need to run it? at the domain controller machine? or any machine?
+ChatGPT said:
+
+Great question 👍
+
+The setspn command is part of the Active Directory tools — it queries the AD object for your Jenkins service account.
+
+🔹 Where you can run it
+
+Domain Controller (DC): Always works, since the AD database is local.
+
+Any Windows machine that has:
+
+Joined the same domain (cod.ms.com.cn in your case), and
+
+RSAT (Remote Server Administration Tools) or AD tools installed, and
+
+You have rights to query AD (normal domain user can run -L, but you need admin rights to add/update SPNs with -S).
+
+So:
+
+If you just want to list/check SPNs → you can run it on your own workstation if you have RSAT installed.
+
+If you want to register or fix SPNs → typically done on the DC or a machine with AD admin privileges.
+
+🔹 Example (check only, no admin rights needed)
+setspn -L jenkins-service-account
+
+
+Output might show:
+
+Registered ServicePrincipalNames for CN=jenkins-service-account,OU=ServiceAccounts,DC=cod,DC=ms,DC=com,DC=cn:
+    HTTP/jenkins.ai.ms.com.cn
+    HTTP/jenkins.ai.ms.com.cn@COD.MS.COM.CN
+
+
+👉 Do you want me to also give you the exact command to register the SPN (if it’s missing), assuming jenkins-service-account is the account Jenkins runs under?
+
+You said:
+to register, do i need admin permission?
+ChatGPT said:
+
+Yes ✅ — registering (adding) or modifying an SPN in Active Directory requires domain admin (or delegated) permissions.
+
+Here’s the breakdown:
+
+🔹 SPN operations
+
+List existing SPNs (setspn -L) → any authenticated domain user can do this.
+
+Add / Remove SPNs (setspn -S or -D) → requires Domain Admin or an account that has been explicitly delegated the “Write servicePrincipalName” permission on that service account object.
+
+🔹 Example (needs admin rights)
+
+If your Jenkins service account is jenkins-service-account, and you want to register the SPN for the Jenkins hostname:
+
+setspn -S HTTP/jenkins.ai.ms.com.cn jenkins-service-account
+
+
+If Jenkins is accessed with shortname http://jenkins, you might also need:
+
+setspn -S HTTP/jenkins jenkins-service-account
+
+🔹 Why this matters
+
+If the SPN isn’t registered:
+
+The KDC (domain controller) won’t issue a Kerberos ticket for HTTP/jenkins.ai.ms.com.cn.
+
+Your browser won’t send an Authorization: Negotiate header → plugin logs authorization header was missing/null.
+
+curl works only because you explicitly request negotiate against the FQDN.
+
+👉 Do you want me to show you how to check if the SPN is already registered without admin rights, so you can confirm before asking your AD team to add it?
+
+You said:
+so for the kerberos authN flow, the brower - client should send the request and then krb server - jenkins plugin will return the rsp with WWW-Authenticate: Negotiate, and then client should send another request with "Authorization: Negotiate ..." header?
+ChatGPT said:
+
+Exactly 👍 you’ve got the sequence right — that’s the Kerberos/Negotiate authentication handshake (similar to NTLM, but using Kerberos tickets).
+
+Here’s the flow step by step:
+
+🔹 Kerberos (SPNEGO) HTTP Flow
+
+Initial request (no auth yet)
+
+Browser → Jenkins:
+
+GET / HTTP/1.1
+Host: jenkins.ai.ms.com.cn
+
+
+No Authorization header yet.
+
+Server challenges with Negotiate
+
+Jenkins (via Kerberos SSO plugin) → Browser:
+
+HTTP/1.1 401 Unauthorized
+WWW-Authenticate: Negotiate
+
+
+This tells the client: “I support Kerberos (SPNEGO). Send me a token if you can.”
+
+Browser obtains Kerberos ticket from KDC (AD)
+
+Browser calls the domain controller (KDC) to get a service ticket for SPN HTTP/jenkins.ai.ms.com.cn.
+
+If SPN exists and matches, AD issues a ticket encrypted with the Jenkins service account key.
+
+Browser resends request with Kerberos token
+
+Browser → Jenkins:
+
+GET / HTTP/1.1
+Host: jenkins.ai.ms.com.cn
+Authorization: Negotiate YIIB... (base64-encoded Kerberos token)
+
+
+Now Jenkins plugin can validate this token using its keytab or service account credentials.
+
+Jenkins accepts & responds
+
+If ticket is valid → Jenkins authenticates the user, maps to domain account, and continues normal response:
+
+HTTP/1.1 200 OK
+Content-Type: text/html
+...
+
+🔹 Where your issue is
+
+Your plugin logs authorization header was missing/null.
+That means step 4 never happens → the browser never sent the Authorization: Negotiate ... header.
+
+So either:
+
+The browser didn’t even try Kerberos (wrong zone / whitelist / config), or
+
+It couldn’t get a ticket (SPN missing or wrong domain), so it gave up silently.
+
+✅ That’s why curl works (you forced it to do step 4), but Edge doesn’t unless you fix browser config + SPN.
+
+👉 Do you want me to draw you a sequence diagram of this flow (browser ↔ Jenkins ↔ KDC) so you can show your team how the handshake works and where it’s breaking?
+
+You said:
+yes
+ChatGPT said:
+
+Got it 👍 Here’s a simple Kerberos SSO handshake sequence diagram for your Jenkins + browser + AD setup.
+
+🔹 Kerberos HTTP Negotiate Flow (SPNEGO)
+Browser (Edge)                     Jenkins (SPNEGO plugin)                 AD / KDC
+    |                                         |                              |
+    |--- (1) GET / -------------------------->|                              |
+    |                                         |                              |
+    |<-- (2) 401 WWW-Authenticate: Negotiate -|                              |
+    |                                         |                              |
+    |--- (3) Request Kerberos ticket for      |                              |
+    |        SPN: HTTP/jenkins.ai.ms.com.cn --> KDC                           |
+    |                                         |                              |
+    |<-- (4) Kerberos service ticket ---------|                              |
+    |                                         |                              |
+    |--- (5) GET /                            |                              |
+    |        Authorization: Negotiate <token> |                              |
+    |---------------------------------------->|                              |
+    |                                         |                              |
+    |<-- (6) 200 OK (authenticated) ----------|                              |
+    |                                         |                              |
+
+🔹 What’s happening in your case
+
+Step (1) → Browser sends request ✅
+
+Step (2) → Jenkins replies with WWW-Authenticate: Negotiate ✅
+
+Step (3)/(4) → Browser should ask AD for ticket ❌ (likely not happening)
+
+Step (5) → Browser should resend with Authorization: Negotiate ... ❌ (missing → plugin logs “authorization header missing/null”)
+
+🔹 Why it breaks
+
+Browser doesn’t consider jenkins.ai.ms.com.cn trusted for Windows Integrated Auth → doesn’t attempt Kerberos.
+
+Or SPN HTTP/jenkins.ai.ms.com.cn missing in AD → KDC can’t issue ticket.
+
+Result: No Authorization: Negotiate header → plugin logs the error.
+
+👉 Do you want me to also prepare an HTTP raw header trace (working vs failing) so you can compare your curl output with what Edge is sending?
+
+You said:
+ok, got it. and i tried it also in a redhat os machine with curl, however, i get error. which problem do you think it can be ?
+ChatGPT said:
+
+Nice, this adds another dimension 🔍
+
+If curl --negotiate -u : http://jenkins.ai.ms.com.cn works on Windows but fails on Red Hat Linux, then the difference is in how Kerberos is configured on the Linux side.
+
+🔹 Common causes on Red Hat for curl + Kerberos failure
+
+Missing or misconfigured krb5.conf
+
+On Linux, Kerberos libs read /etc/krb5.conf.
+
+If the [realms] or [domain_realm] mapping isn’t correct, curl can’t find the right KDC.
+
+Example (for you):
+
+[libdefaults]
+  default_realm = COD.MS.COM.CN
+  dns_lookup_kdc = true
+
+[realms]
+  COD.MS.COM.CN = {
+    kdc = dc1.cod.ms.com.cn
+    admin_server = dc1.cod.ms.com.cn
+  }
+
+[domain_realm]
+  .cod.ms.com.cn = COD.MS.COM.CN
+  cod.ms.com.cn = COD.MS.COM.CN
+  .ms.com.cn = COD.MS.COM.CN
+  ms.com.cn = COD.MS.COM.CN
+
+
+No Kerberos ticket (kinit)
+
+On Linux, curl won’t prompt you for a password.
+
+You need to run:
+
+kinit youruser@COD.MS.COM.CN
+klist
+
+
+Make sure you actually have a valid TGT (Ticket Granting Ticket).
+
+SPN mismatch
+
+Same as on Windows: the SPN HTTP/jenkins.ai.ms.com.cn must exist in AD.
+
+If SPN is missing or wrong, KDC won’t issue service ticket → curl fails.
+
+Keytab usage (if non-interactive)
+
+If you’re testing from a Jenkins Linux agent or service account, you might need:
+
+kinit -kt /path/to/keytab jenkinsuser@COD.MS.COM.CN
+
+
+Time skew
+
+Kerberos is sensitive to time.
+
+If your RHEL box clock differs from AD by more than ~5 minutes, tickets fail.
+
+Fix:
+
+sudo chronyc sources -v
+sudo chronyc makestep
+
+🔹 What I’d suggest testing
+
+On the RHEL machine:
+
+kinit youruser@COD.MS.COM.CN
+klist
+
+
+→ confirm you have a valid ticket.
+
+Run with verbose curl:
+
+curl -v --negotiate -u : http://jenkins.ai.ms.com.cn
+
+
+Look for:
+
+Authorization: Negotiate ... being sent?
+
+Error like No credentials cache found → means you didn’t kinit.
+
+Error like No such realm → bad /etc/krb5.conf.
+
+👉 Do you want me to give you an example minimal /etc/krb5.conf template for your domain (cod.ms.com.cn), so you can test on the RHEL box?
+
+You said:
+for the 2nd test step, how can i look for the information you said, in the output log?
+ChatGPT said:
+
+Got it — let’s break down what to look for in the verbose curl output when testing Kerberos on Linux.
+
+🔹 Run curl with verbose Kerberos info
+curl -v --negotiate -u : http://jenkins.ai.ms.com.cn
+
+
+-v → verbose output (headers, request/response, debug info)
+
+--negotiate → use SPNEGO/Kerberos auth
+
+-u : → username/password placeholder (not used, required by curl syntax)
+
+🔹 What to look for
+1️⃣ Initial request
+> GET / HTTP/1.1
+> Host: jenkins.ai.ms.com.cn
+> User-Agent: curl/7.xx
+
+
+No Authorization header yet — normal.
+
+2️⃣ Server challenge
+< HTTP/1.1 401 Unauthorized
+< WWW-Authenticate: Negotiate
+
+
+Jenkins tells curl “I accept Kerberos/SPNEGO”
+
+This is step (2) in the handshake.
+
+3️⃣ Curl attempts Kerberos
+
+You should see something like:
+
+*   Trying 10.x.x.x:80...
+* Connected to jenkins.ai.ms.com.cn (10.x.x.x) port 80 (#0)
+* Negotiate auth using GSSAPI
+* Successfully acquired Kerberos ticket
+
+
+If you see No Kerberos credentials available → you didn’t run kinit or ticket expired.
+
+4️⃣ Authorization header sent
+
+Curl usually logs:
+
+> GET / HTTP/1.1
+> Host: jenkins.ai.ms.com.cn
+> Authorization: Negotiate YIIB...  <-- base64 Kerberos token
+
+
+This is step (4) — key check: if this line exists, Kerberos ticket is sent.
+
+5️⃣ Server response
+< HTTP/1.1 200 OK
+
+
+Success → curl authenticated via Kerberos.
+
+🔹 Common failure messages in curl verbose output
+Symptom	Likely cause
+No Kerberos credentials available	Forgot kinit, or wrong principal
+GSSAPI: No valid credentials	Ticket expired or wrong keytab
+Failed to find KDC for realm COD.MS.COM.CN	/etc/krb5.conf misconfigured
+authorization header missing	Server didn’t see the token (maybe SPN mismatch)
+
+If you want, I can make a sample working vs failing curl output snippet so you can directly compare your RHEL test log. It makes it very obvious where the problem is.
+
+You said:
+ok
+ChatGPT said:
+
+Perfect — here’s an example of what the curl verbose output looks like in a working vs failing Kerberos case. I’ve annotated the key lines so you can compare with your RHEL test.
+
+✅ Working Kerberos (SPNEGO) example
+$ curl -v --negotiate -u : http://jenkins.ai.ms.com.cn
+*   Trying 10.10.10.5:80...
+* Connected to jenkins.ai.ms.com.cn (10.10.10.5) port 80 (#0)
+* Initializing NSS with certpath: sql:/etc/pki/nssdb
+*   CAfile: /etc/pki/tls/certs/ca-bundle.crt
+*   CApath: none
+*   Negotiate auth using GSSAPI
+*   Successfully acquired Kerberos ticket
+> GET / HTTP/1.1
+> Host: jenkins.ai.ms.com.cn
+> User-Agent: curl/7.76.1
+> Authorization: Negotiate YIIB... (base64 token)
+< HTTP/1.1 200 OK
+< Content-Type: text/html; charset=UTF-8
+< Server: Jetty(9.4.z)
+...
+
+
+Key points:
+
+Successfully acquired Kerberos ticket → kinit succeeded
+
+Authorization: Negotiate ... header sent → browser equivalent is missing in your Edge test
+
+Server replies 200 OK → authentication succeeded
+
+❌ Failing Kerberos example
+$ curl -v --negotiate -u : http://jenkins.ai.ms.com.cn
+*   Trying 10.10.10.5:80...
+* Connected to jenkins.ai.ms.com.cn (10.10.10.5) port 80 (#0)
+*   Negotiate auth using GSSAPI
+* GSSAPI: No valid credentials cache found
+* Failed to initialize Kerberos authentication
+* Closing connection 0
+curl: (67) Failed to initialize Kerberos authentication
+
+
+Key points:
+
+No valid credentials cache found → did not run kinit
+
+No Authorization header is sent → server sees nothing → same symptom as your Edge log
+
+curl: (67) → authentication failed
+
+🔹 How to use this
+
+Run your failing curl with -v on RHEL.
+
+Compare each line with the working example:
+
+Did curl acquire a ticket? (Successfully acquired Kerberos ticket)
+
+Is Authorization: Negotiate ... being sent?
+
+What does the server respond? 401 or 200?
+
+If any of these steps fail → check:
+
+Step 1: kinit youruser@COD.MS.COM.CN
+
+Step 2: /etc/krb5.conf settings for your domain
+
+Step 3: SPN HTTP/jenkins.ai.ms.com.cn exists in AD
+
+If you want, I can make a mini checklist specifically for RHEL curl tests with exact commands to see where it’s breaking, so you can fix it quickly. Do you want me to do that?
+
+
+Perfect — here’s a mini checklist for testing Kerberos SSO with curl on RHEL, step by step. It will help you pinpoint exactly where the flow is breaking.
+
+🔹 1. Check system time
+
+Kerberos is sensitive to time skew.
+
+date
+sudo chronyc sources -v
+
+
+If the time differs from your domain controller by more than ~5 min → sync with NTP/Chrony.
+
+🔹 2. Verify Kerberos config (/etc/krb5.conf)
+
+Make sure your file has correct realm and domain mappings. Example for your setup:
+
+[libdefaults]
+  default_realm = COD.MS.COM.CN
+  dns_lookup_kdc = true
+
+[realms]
+  COD.MS.COM.CN = {
+    kdc = dc1.cod.ms.com.cn
+    admin_server = dc1.cod.ms.com.cn
+  }
+
+[domain_realm]
+  .cod.ms.com.cn = COD.MS.COM.CN
+  cod.ms.com.cn = COD.MS.COM.CN
+  .ms.com.cn = COD.MS.COM.CN
+  ms.com.cn = COD.MS.COM.CN
+
+
+Replace dc1.cod.ms.com.cn with your actual KDC.
+
+🔹 3. Obtain a Kerberos ticket (kinit)
+kinit youruser@COD.MS.COM.CN
+klist
+
+
+kinit prompts for your password.
+
+klist should show a valid TGT (Ticket Granting Ticket).
+
+🔹 4. Test curl with verbose output
+curl -v --negotiate -u : http://jenkins.ai.ms.com.cn
+
+
+Look for:
+
+Successfully acquired Kerberos ticket
+
+Authorization: Negotiate ... header sent
+
+Server response: 200 OK
+
+Compare with working vs failing examples (I sent earlier).
+
+🔹 5. Common issues & solutions
+Symptom in curl log	Likely cause	Fix
+No valid credentials cache found	Forgot kinit	Run kinit youruser@COD.MS.COM.CN
+Failed to find KDC for realm	/etc/krb5.conf misconfigured	Correct [realms] and [domain_realm]
+GSSAPI: Cannot find keytab (if using keytab)	Keytab missing or wrong path	kinit -kt /path/to/keytab jenkinsuser@COD.MS.COM.CN
+Authorization header not sent	SPN mismatch or hostname mismatch	Ensure SPN exists for HTTP/jenkins.ai.ms.com.cn and curl uses that FQDN
+🔹 6. Optional: Using a keytab for non-interactive auth
+
+If this is a Jenkins agent or automated test:
+
+kinit -kt /etc/krb5.keytab jenkinsuser@COD.MS.COM.CN
+curl -v --negotiate -u : http://jenkins.ai.ms.com.cn
+
+
+This avoids prompting for password.
+
+This checklist ensures you can step through the authentication flow on RHEL and see exactly where it fails: ticket acquisition, header sending, or SPN validation.
+
+
+Ah — thanks for clarifying. That makes sense. When gss_init_sec_context() fails with:
+
+Server not found in Kerberos database
+
+
+it’s coming from the GSSAPI layer (used by curl/libcurl) rather than the low-level krb5 library. The meaning is essentially the same: the service principal (SPN) that the client is trying to authenticate to doesn’t exist in the KDC. Let’s break it down specifically for your case.
+
+🔹 Why gss_init_sec_context() fails
+
+SPN mismatch
+
+GSSAPI builds the Kerberos principal as:
+
+HTTP/jenkins.ai.ms.com.cn@COD.MS.COM.CN
+
+
+If that exact SPN isn’t registered in AD → KDC cannot issue a service ticket → gss_init_sec_context() fails.
+
+Realm mapping issue on Linux
+
+/etc/krb5.conf must map your host/domain to the correct realm.
+
+Example:
+
+[domain_realm]
+jenkins.ai.ms.com.cn = COD.MS.COM.CN
+.ai.ms.com.cn = COD.MS.COM.CN
+
+
+Using hostname that doesn’t match SPN
+
+http://jenkins or http://ip-address → GSSAPI constructs principal HTTP/jenkins@COD.MS.COM.CN → fails if SPN is HTTP/jenkins.ai.ms.com.cn.
+
+Keytab not available / wrong for service
+
+On the server side, the Jenkins SPNEGO plugin needs either:
+
+Running as a domain account with correct credentials, or
+
+A keytab that contains the SPN HTTP/jenkins.ai.ms.com.cn
+
+🔹 How to verify and fix
+
+Check SPN in AD
+
+setspn -L jenkins-service-account
+
+
+Make sure you see HTTP/jenkins.ai.ms.com.cn.
+
+If missing, a domain admin should add it:
+
+setspn -S HTTP/jenkins.ai.ms.com.cn jenkins-service-account
+
+
+Update /etc/krb5.conf on Linux
+
+[libdefaults]
+  default_realm = COD.MS.COM.CN
+  dns_lookup_kdc = true
+
+[domain_realm]
+  jenkins.ai.ms.com.cn = COD.MS.COM.CN
+  .ai.ms.com.cn = COD.MS.COM.CN
+
+
+Use the exact FQDN in curl
+
+curl -v --negotiate -u : http://jenkins.ai.ms.com.cn
+
+
+Test Kerberos ticket
+
+kinit youruser@COD.MS.COM.CN
+klist
+
+
+Should see valid TGT.
+
+Optional keytab test (for non-interactive access)
+
+kinit -kt /path/to/jenkins.keytab jenkins-service-account@COD.MS.COM.CN
+curl -v --negotiate -u : http://jenkins.ai.ms.com.cn
+
+🔹 Key difference between krb5_sendto_kdc vs gss_init_sec_context
+
+krb5_sendto_kdc() → low-level communication with KDC (TGT request)
+
+gss_init_sec_context() → higher-level GSSAPI call that constructs the SPN from the target hostname.
+
+If your SPN doesn’t exist in AD or the hostname/realm mapping is wrong, GSSAPI fails with “Server not found in Kerberos database.”
+
+So in short: Linux GSSAPI is stricter than Windows clients — SPN must exist and match hostname exactly.
+
+I can make a step-by-step Linux fix checklist specifically for curl and GSSAPI, including commands to verify SPN, keytab, and /etc/krb5.conf, if you want. Do you want me to do that?
+
+You said:
+can i specify another location of krb5.conf for curl
+ChatGPT said:
+
+Yes ✅ — you can tell curl (and any Kerberos library using MIT/Heimdal) to use a custom krb5.conf file via an environment variable.
+
+🔹 Use a custom krb5.conf for curl
+export KRB5_CONFIG=/path/to/custom/krb5.conf
+curl -v --negotiate -u : http://jenkins.ai.ms.com.cn
+
+
+KRB5_CONFIG → points to your desired Kerberos configuration file.
+
+Must be absolute path.
+
+🔹 Notes
+
+Only affects the current shell session (or any child processes).
+
+You can combine with kinit:
+
+export KRB5_CONFIG=/path/to/custom/krb5.conf
+kinit youruser@COD.MS.COM.CN
+curl -v --negotiate -u : http://jenkins.ai.ms.com.cn
+
+
+You can also set other Kerberos environment variables if needed:
+
+export KRB5_KTNAME=/path/to/your.keytab   # keytab for non-interactive login
+export KRB5CCNAME=/tmp/krb5cc_mycache    # cache location for tickets
+
+
+✅ This is very useful if your Linux box has a system-wide /etc/krb5.conf that you don’t want to modify, or if you want to test different realms/SPNs temporarily.
