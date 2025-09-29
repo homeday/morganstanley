@@ -979,3 +979,18 @@ export KRB5CCNAME=/tmp/krb5cc_mycache    # cache location for tickets
 
 
 ✅ This is very useful if your Linux box has a system-wide /etc/krb5.conf that you don’t want to modify, or if you want to test different realms/SPNs temporarily.
+
+
+
+import org.codelibs.spnego.SpnegoHttpFilter
+import jenkins.model.Jenkins
+
+def ctx = Jenkins.instance.servletContext
+def filters = ctx.getFilterRegistrations()
+def spnego = filters["SpnegoHttpFilter"]
+
+if (spnego != null) {
+    println "[Kerberos-SSO] Updating spnego.exclude.dirs via reflection"
+    spnego.setInitParameter("spnego.exclude.dirs", "/tcpSlaveAgentListener,/jnlpJars,/cli,/whoAmI")
+}
+
