@@ -1,0 +1,135 @@
+Here’s a structured documentation draft you can use to describe Jenkins Folder-Level Shared Libraries and Dynamic Retrieval Shared Libraries, including rationale, architecture, and a comparison table. It’s written in a clear and professional style suitable for technical documentation or internal wiki.
+
+Jenkins Folder-Level and Dynamic Retrieval Shared Libraries
+Overview
+
+In a multi-team or multi-tenant Jenkins environment, not all users or teams should share the same Jenkins Pipeline Shared Libraries.
+To provide flexibility while maintaining security and isolation, we adopt Folder-Level Shared Libraries and Dynamic Retrieval Shared Libraries.
+
+These two approaches allow teams to:
+
+Use their own shared libraries without interfering with global or other teams’ configurations.
+
+Manage credentials and permissions within their own namespace (folder scope).
+
+Increase autonomy while maintaining system-wide governance.
+
+1. Folder-Level Shared Libraries
+Description
+
+A Folder-Level Shared Library is a Jenkins Pipeline Shared Library that is defined and configured at a specific folder level rather than globally.
+
+Each Jenkins folder can define its own libraries under “Folder Configuration → Pipeline Libraries”.
+Only jobs under that folder (and subfolders) can access those libraries.
+
+Use Cases
+
+Teams that need to manage their own library versions or custom steps.
+
+Projects that must isolate their build logic from others.
+
+Scenarios where folder-level permissions restrict visibility or execution to specific users or groups.
+
+Advantages
+
+Isolation: Each folder has its own library configuration and credentials.
+
+Security: Users with access to one folder cannot modify or use libraries in another folder.
+
+Flexibility: Teams can test and evolve their libraries independently from global ones.
+
+Example
+@Library('team-shared-lib') _
+pipeline {
+  agent any
+  stages {
+    stage('Build') {
+      steps {
+        teamBuildStep()
+      }
+    }
+  }
+}
+
+
+Here, team-shared-lib is defined in the folder configuration and available only to pipelines in that folder.
+
+2. Dynamic Retrieval Shared Libraries
+Description
+
+A Dynamic Retrieval Shared Library is a library that is loaded at runtime directly from a Git repository (or other SCM source) using the library step.
+It is not pre-configured globally or in the folder’s library list.
+Instead, it is dynamically fetched within the pipeline itself.
+
+Use Cases
+
+Users who need full control over which Git repository and branch to load.
+
+Teams that maintain multiple versions of a shared library or want to pin a specific commit.
+
+Scenarios where credentials used to access the library must be restricted to folder-level scope.
+
+Example
+library(
+  identifier: 'custom-lib@main',
+  retriever: modernSCM([
+    $class: 'GitSCMSource',
+    remote: 'https://git.example.com/team/custom-lib.git',
+    credentialsId: 'folder-git-credential'
+  ])
+)
+
+pipeline {
+  agent any
+  stages {
+    stage('Test') {
+      steps {
+        customTestStep()
+      }
+    }
+  }
+}
+
+Advantages
+
+Dynamic control: Pipelines can specify library source, branch, or commit dynamically.
+
+Scoped credentials: Uses folder-level credentials, ensuring users only access their permitted repositories.
+
+Experimentation: Developers can test new library versions without admin intervention.
+
+3. Why We Use These Approaches
+Goal	Folder-Level Shared Lib	Dynamic Retrieval Shared Lib
+Security isolation	✅ Scoped by folder	✅ Scoped by folder credentials
+Ease of management	✅ Configured once in folder	⚙️ Defined per pipeline
+User autonomy	✅ Each team manages its own lib	✅ Full runtime control
+Version flexibility	⚙️ Managed via folder config	✅ Can specify branch/commit
+Access control	✅ Tied to folder permissions	✅ Tied to folder credentials
+Use case example	Team A uses its own CI templates	Developer loads feature branch lib for testing
+
+Both approaches solve the problem of restricting access to team-specific libraries and avoiding cross-team interference, but they differ in how much flexibility and management overhead they introduce.
+
+4. Best Practices
+
+Use Folder-Level Shared Libraries for stable, team-wide shared logic.
+
+Use Dynamic Retrieval Shared Libraries for:
+
+Experimental development
+
+Cross-version testing
+
+Advanced scenarios needing fine-grained control
+
+Always ensure folder-level permissions and credentials are correctly configured to prevent unauthorized access.
+
+Avoid overusing dynamic retrieval in production pipelines — it can slow startup and complicate auditing.
+
+5. Summary
+Aspect	Folder-Level Shared Library	Dynamic Retrieval Shared Library
+Defined in	Folder configuration	Pipeline script
+Credential Scope	Folder-level	Folder-level
+Flexibility	Medium	High
+Security	High	High (depends on credential management)
+Setup complexity	Low	Medium
+Recommended for	Stable team-shared pipelines	Ad-hoc or experimental pipelines
