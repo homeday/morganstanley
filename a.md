@@ -192,3 +192,24 @@ Add custom Groovy files under the vars/ directory.
 
 Use customLibrary to load your library in Jenkins pipelines.
 
+
+
+import com.cloudbees.jenkins.plugins.bitbucket.server.BitbucketServerConfiguration
+import com.cloudbees.jenkins.plugins.bitbucket.endpoints.BitbucketEndpointConfiguration
+
+// get all Bitbucket Server configurations
+def configs = BitbucketServerConfiguration.all()
+configs.each { cfg ->
+    println "Name: ${cfg.name}, ID: ${cfg.id}"
+}
+
+// or find one by name
+def targetName = "my-bitbucket-server"
+def target = configs.find { it.name == targetName }
+
+if (target) {
+    println "Found '${targetName}' with ID: ${target.id}"
+} else {
+    println "No Bitbucket Server configuration named '${targetName}' found."
+}
+
