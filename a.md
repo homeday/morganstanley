@@ -127,3 +127,68 @@ This decision also introduces a need for ongoing maintenance of Jenkins componen
 
 
  
+
+Consume Your Own Shared Library in Jenkins
+
+Besides using the MSDE Train Shared Libraries, users can also create their own shared libraries, push them to Bitbucket, and load them into their Jenkins pipelines using the customLibrary method.
+
+1. Writing Your Own Shared Library
+
+For general guidance on how to create a Jenkins shared library, please refer to the following documentation:
+👉 How to Write a Shared Library
+
+2. Example: Creating a Custom Helper
+
+Here’s an example of a simple custom shared library function that prepares a Python virtual environment.
+
+Create a Groovy file named withPyEnvConfig.groovy and add it to the vars folder in your repository.
+
+def call(def body) {
+    sh '''
+        set -eux
+        python3 -m venv .venv
+        ./.venv/bin/activate
+        python -m pip install --upgrade pip
+    '''
+    withEnv([
+        "VIRTUAL_ENV=${env.WORKSPACE}/.venv",
+        "PATH=${env.WORKSPACE}/.venv/bin:${env.PATH}"
+    ]) {
+        body()
+    }
+}
+
+
+This function creates a Python virtual environment, activates it, and ensures pip is up to date.
+Then, it executes the provided pipeline body (body) within that environment.
+
+3. Loading Your Custom Library
+
+To load your custom shared library, use the customLibrary function in your pipeline script.
+For example:
+
+customLibrary(projectName: 'bbProj', repoName: 'repoName')
+
+pipeline {
+    stages {
+        stage("Build") {
+            steps {
+                withPyEnvConfig {
+                    // Your build steps here
+                }
+            }
+        }
+    }
+}
+
+
+This example demonstrates how the custom function withPyEnvConfig can be called directly in your pipeline once your shared library is loaded.
+
+✅ Summary
+
+You can host your shared library in Bitbucket.
+
+Add custom Groovy files under the vars/ directory.
+
+Use customLibrary to load your library in Jenkins pipelines.
+
