@@ -98,3 +98,99 @@ if (prop != null) {
 folder.save()
 println "Folder restriction is now set to '${newLabel}'"
 
+
+//===========================================================================================
+package org.company
+
+import java.util.logging.Logger
+import java.util.logging.Level
+
+/**
+ * Production-grade Jenkins Shared Library logger.
+ * - Uses JUL Logger to write to Jenkins master logs
+ * - Correct caller info (using @NonCPS)
+ * - Safe for CPS (static methods, no serialization)
+ * - Includes custom formatting: timestamp, thread, job, build
+ */
+class LoggerUtil implements Serializable {
+
+    // Use your own namespace so Jenkins Log Recorder can filter it
+    private static final Logger LOGGER =
+        Logger.getLogger("org.company.sharedlib")
+
+    /**
+     * Build custom formatted log prefix.
+     *
+     * Must be @NonCPS because it uses Date and system calls
+     * that should not be CPS-transformed.
+     */
+    @NonCPS
+    private static String formatMessage(String msg) {
+        String ts = new Date().format("yyyy-MM-dd HH:mm:ss.SSS")
+        String thread = Thread.currentThread().name
+
+        // Works inside Jenkins Pipeline only
+        String job   = System.getenv("JOB_NAME") ?: "unknown-job"
+        String build = System.getenv("BUILD_NUMBER") ?: "0"
+
+        return "[${ts}] [${thread}] [${job}#${build}] ${msg}"
+    }
+
+    @NonCPS
+    static void info(String msg) {
+        LOGGER.log(Level.INFO, formatMessage(msg))
+    }
+
+    @NonCPS
+    static void warn(String msg) {
+        LOGGER.log(Level.WARNING, formatMessage(msg))
+    }
+
+    @NonCPS
+    static void error(String msg) {
+        LOGGER.log(Level.SEVERE, formatMessage(msg))
+    }
+
+    @NonCPS
+    static void debug(String msg) {
+        LOGGER.log(Level.FINE, formatMessage(msg))
+    }
+}
+
+import org.company.LoggerUtil
+
+def info(String msg) {
+    LoggerUtil.info(msg)
+}
+
+def warn(String msg) {
+    LoggerUtil.warn(msg)
+}
+
+def error(String msg) {
+    LoggerUtil.error(msg)
+}
+
+def debug(String msg) {
+    LoggerUtil.debug(msg)
+}
+
+@Library('my-shared-lib') _
+
+pipeline {
+    agent any
+    stages {
+        stage('Test Logging') {
+            steps {
+                script {
+                    logger.info("Pipeline started")
+                    logger.warn("This is a warning")
+                    logger.error("Something went wrong")
+                    logger.debug("Debug message (visible only if log level=FINE)")
+                }
+            }
+        }
+    }
+}
+
+
