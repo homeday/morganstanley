@@ -194,3 +194,195 @@ pipeline {
 }
 
 
+(
+  kube_pod_status_phase{phase="Running", namespace=~"$namespace"}
+  OR
+  ((time() - kube_pod_created{namespace=~"$namespace"}) < 12*3600)
+)
+
+
+{
+  "title": "Jenkins K8s Agents (Clean View)",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "templating": {
+    "list": [
+      {
+        "name": "namespace",
+        "type": "query",
+        "datasource": "Prometheus",
+        "query": "label_values(kube_pod_info, namespace)",
+        "includeAll": true,
+        "multi": true
+      },
+      {
+        "name": "pod_age_hours",
+        "type": "textbox",
+        "label": "Show terminated pods younger than (hours)",
+        "query": "",
+        "current": {"text": "12", "value": "12"}
+      },
+      {
+        "name": "jenkins_only",
+        "type": "custom",
+        "query": "true,false",
+        "current": {"text": "true", "value": "true"},
+        "label": "Only Jenkins Agent Pods"
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "table",
+      "title": "Pods (Filtered)",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "kube_pod_info{namespace=~\"$namespace\"} "
+                  + "and on(namespace,pod) ("
+                  + "kube_pod_status_phase{phase=\"Running\", namespace=~\"$namespace\"}"
+                  + " OR "
+                  + "(time() - kube_pod_created < $pod_age_hours * 3600) "
+                  + ") "
+                  + "and on(pod) ("
+                  + "$jenkins_only == \"true\" ? kube_pod_info{pod=~\"jenkins-agent-.*\"} : kube_pod_info"
+                  + ")",
+          "format": "table"
+        }
+      ],
+      "options": {
+        "showHeader": true
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Running Jenkins Agents",
+      "targets": [
+        {
+          "expr": "count(kube_pod_status_phase{phase=\"Running\", pod=~\"jenkins-agent-.*\", namespace=~\"$namespace\"})"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Recently Terminated Jenkins Agents (< $pod_age_hours h)",
+      "targets": [
+        {
+          "expr": "count((time() - kube_pod_created < $pod_age_hours * 3600) and kube_pod_info{pod=~\"jenkins-agent-.*\", namespace=~\"$namespace\"})"
+        }
+      ]
+    }
+  ]
+}
+
+
+{
+  "title": "Kubernetes Pods with Role & Jenkins Agents (Filtered <12h)",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "templating": {
+    "list": [
+      {
+        "name": "namespace",
+        "type": "query",
+        "datasource": "Prometheus",
+        "query": "label_values(kube_pod_info, namespace)",
+        "includeAll": true,
+        "multi": true
+      },
+      {
+        "name": "role",
+        "type": "query",
+        "datasource": "Prometheus",
+        "query": "label_values(kube_pod_info, role)",
+        "includeAll": true,
+        "multi": true
+      },
+      {
+        "name": "pod_age_hours",
+        "type": "textbox",
+        "label": "Show terminated pods younger than (hours)",
+        "query": "",
+        "current": { "text": "12", "value": "12" }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Running Pods (All)",
+      "targets": [
+        {
+          "expr": "count(kube_pod_status_phase{phase=\"Running\", namespace=~\"$namespace\"})"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Running Pods by Role",
+      "targets": [
+        {
+          "expr": "count(kube_pod_status_phase{phase=\"Running\", namespace=~\"$namespace\", role=~\"$role\"})"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Running Jenkins Agents",
+      "targets": [
+        {
+          "expr": "count(kube_pod_status_phase{phase=\"Running\", pod=~\"jenkins-agent-.*\", namespace=~\"$namespace\"})"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Recently Terminated Pods (<$pod_age_hours h)",
+      "targets": [
+        {
+          "expr": "count((time() - kube_pod_created{namespace=~\"$namespace\"}) < $pod_age_hours * 3600)"
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "title": "All Pods (Running OR < $pod_age_hours h, role = $role)",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "(kube_pod_info{namespace=~\"$namespace\", role=~\"$role\"}) and on(namespace, pod) (kube_pod_status_phase{phase=\"Running\", namespace=~\"$namespace\"} OR ((time() - kube_pod_created{namespace=~\"$namespace\"}) < $pod_age_hours * 3600))",
+          "format": "table"
+        }
+      ],
+      "options": { "showHeader": true }
+    },
+    {
+      "type": "table",
+      "title": "Jenkins Agents (Running OR < $pod_age_hours h)",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "kube_pod_info{pod=~\"jenkins-agent-.*\", namespace=~\"$namespace\"} and on(namespace, pod) (kube_pod_status_phase{phase=\"Running\", namespace=~\"$namespace\"} OR ((time() - kube_pod_created{namespace=~\"$namespace\"}) < $pod_age_hours * 3600))",
+          "format": "table"
+        }
+      ],
+      "options": { "showHeader": true }
+    },
+    {
+      "type": "table",
+      "title": "Other Pods (Not Jenkins, role = $role)",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "kube_pod_info{pod!~\"jenkins-agent-.*\", namespace=~\"$namespace\", role=~\"$role\"} and on(namespace, pod) (kube_pod_status_phase{phase=\"Running\", namespace=~\"$namespace\"} OR ((time() - kube_pod_created{namespace=~\"$namespace\"}) < $pod_age_hours * 3600))",
+          "format": "table"
+        }
+      ],
+      "options": { "showHeader": true }
+    }
+  ]
+}
