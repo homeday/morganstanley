@@ -386,3 +386,54 @@ pipeline {
     }
   ]
 }
+
+
+
+import groovy.json.JsonSlurper
+
+// ================================
+// 1. Settings
+// ================================
+def namespace = "default"
+def labelSelector = "app=myapp"   // change this
+
+// Token & CA cert of the pod running Jenkins
+def token = new File("/var/run/secrets/kubernetes.io/serviceaccount/token").text.trim()
+def caCertPath = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+
+// Kubernetes API endpoint
+def urlStr = "https://kubernetes.default.svc/api/v1/namespaces/${namespace}/pods?labelSelector=${labelSelector}"
+println "Calling URL: ${urlStr}"
+
+// ================================
+// 2. Open HTTPS connection normally
+// ================================
+def url = new URL(urlStr)
+def conn = url.openConnection()
+
+conn.setRequestProperty("Authorization", "Bearer ${token}")
+conn.setRequestProperty("Accept", "application/json")
+
+// Load CA cert (Jenkins must trust Kubernetes CA)
+def caCertFile = new File(caCertPath)
+if (caCertFile.exists()) {
+    System.setProperty("javax.net.ssl.trustStore", caCertPath)
+}
+
+// ================================
+// 3. Fetch and parse JSON
+// ================================
+def responseText = conn.inputStream.text
+def json = new JsonSlurper().parseText(responseText)
+
+// ================================
+// 4. Output result
+// ================================
+println ""
+println "====== PODS FOUND ======"
+json.items.each { pod ->
+    println "- ${pod.metadata.name}    (phase=${pod.status.phase})"
+}
+println "========================"
+println "Total pod count: ${json.items.size()}"
+
