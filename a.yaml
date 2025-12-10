@@ -1,0 +1,132 @@
+
+
+    
+  
+cks-a:
+  resources:
+    default: normal
+    normal:
+      resources:
+        requests:
+          memory: "32Mi"
+          cpu: "100m"
+        limits:
+          memory: "64Mi"
+          cpu: "200m"
+      labels:
+        resource-type: "normal"
+    xlarge:
+      resources:
+        requests:
+          memory: "64Mi"
+          cpu: "250m"
+        limits:
+          memory: "128Mi"
+          cpu: "500m"
+      labels:
+        resource-type: "xlarge"
+  jobExact:
+    my-special-job: xlarge
+    nightly-cleanup: large
+    data-sync: normal
+
+  jobRules:
+    ".*heavy.*": xlarge
+    ".*large.*": large
+    ".*": normal
+
+csk-b:
+  resources:
+    default: normal
+    normal:
+      resources:
+        requests:
+          memory: "32Mi"
+          cpu: "100m"
+        limits:
+          memory: "64Mi"
+          cpu: "200m"
+      labels:
+        resource-type: "normal"
+    xlarge:
+      resources:
+        requests:
+          memory: "64Mi"
+          cpu: "250m"
+        limits:
+          memory: "128Mi"
+          cpu: "500m"
+      labels:
+        resource-type: "xlarge"
+  jobExact:
+    my-special-job: xlarge
+    nightly-cleanup: large
+    data-sync: normal
+
+  jobRules:
+    ".*heavy.*": xlarge
+    ".*large.*": large
+    ".*": normal
+
+
+
+package org.company
+
+class PodResourceResolver implements Serializable {
+
+    static Map configCache
+
+    /** Load YAML only once per Jenkins master lifecycle */
+    static Map loadConfig(script) {
+        if (configCache) return configCache
+
+        def yaml = script.libraryResource("pod-config.yaml")
+        configCache = script.readYaml(text: yaml)
+        return configCache
+    }
+
+
+    /**
+     * Main method the pipeline will call.
+     * Returns a Map: [resources: {...}, labels: {...}]
+     */
+    static Map resolve(script, String namespace, String jobName) {
+        def config = loadConfig(script)
+
+        if (!config.containsKey(namespace)) {
+            script.echo "[PodResourceResolver] Namespace '${namespace}' not found. Using safe defaults."
+            return [:]
+        }
+
+        def nsConfig = config[namespace]
+        def jobType = resolveJobType(nsConfig, jobName)
+        return nsConfig.resources[jobType] ?: [:]
+    }
+
+
+    /** Determine which resource type to use */
+    static String resolveJobType(Map nsConfig, String jobName) {
+
+        jobName = (jobName ?: "").toLowerCase()
+
+        // 1. Exact match
+        if (nsConfig.jobExact) {
+            def match = nsConfig.jobExact.find { k, v -> k.toLowerCase() == jobName }
+            if (match) return match.value
+        }
+
+        // 2. Regex rules
+        if (nsConfig.jobRules) {
+            for (rule in nsConfig.jobRules) {
+                def regex = rule.key
+                def type = rule.value
+                if (jobName.matches(regex.toLowerCase())) {
+                    return type
+                }
+            }
+        }
+
+        // 3. Default type
+        return nsConfig.resources.default
+    }
+}
