@@ -54,3 +54,123 @@ stage('Decrypt') {
         '''
     }
 }
+
+
+Since filter-repo61 is not a native git sub-command, you need to first install it. 
+Python 3.6+ and Git 2.22+ needed. Set directory which locate "git-filter-repo" raw file into $PATH env, and set "+x", then you're able to use "git filter-repo" command for following actions. Otherwise, type "python3 git-filter-repo" instead. 
+• Clone repository • Check branch which contains the target file • Find the target files and commit history id 
+git rev-list --objects --all | grep -f <(git verify-pack -v .git/objects/pack/*.idx | sort -k 3 -n I cut -f 1-d " " | tail -10) • Start filtering these large files by passing the path & name of the file you would like to remove 
+git filter-repo --path-globi*.zip' --invert-paths --force Here, also support "path", "path-match", "path-regex" to set search pattern. • Add repository remote URL git remote add origin curl> • Push to remote 
+git push --all --force git push --tags --force 
+
+
+
+git filter-repo --path-glob *.zip --invert-paths --force
+
+
+git filter-repo --path-glob *.png --invert-paths --force
+
+
+
+consume your 
+
+Jenkins Installation or Upgrade Procedure
+1. Download and Upload Jenkins WAR Package
+
+Download the WAR package from the official Jenkins website.
+
+Upload the file to the Artifactory server.
+
+Onboard it through a JSM request.
+
+Open a CHG (Change Request) and wait for approval.
+
+2. Upgrade on Jenkins Production Server
+
+Log in to the Jenkins Production machine.
+
+Download the WAR package from the Artifactory server to the directory:
+
+/d/d1/jenkins
+
+
+Stop Jenkins:
+
+systemctl --user stop jenkins
+
+
+Switch the symbolic link:
+
+ln -s jenkins_version.war jenkins.war
+
+
+Start Jenkins:
+
+systemctl --user start jenkins
+
+3. Install or Upgrade Plugins (QA Environment)
+
+Log in to Jenkins QA.
+
+Navigate to Manage Jenkins → Manage Plugins → Available.
+
+Search and install (or upgrade) the plugins you need.
+
+Click OK when installation is complete.
+
+4. Publish Plugin Updates to Artifactory
+
+Log in to the Jenkins QA machine.
+
+Download the script repository jenkins_scripts.
+
+Go to the plugins subfolder.
+
+Run the upload script:
+
+./upgrade.sh
+
+
+This script uploads the plugins to the Artifactory server.
+
+Raise a CHG and wait for approval.
+
+5. Upgrade Plugins on Jenkins Production
+
+Log in to the Jenkins Production machine.
+
+Stop Jenkins:
+
+systemctl --user stop jenkins
+
+
+Go to the Jenkins data directory:
+
+/d/d1/jenkins/data/
+
+
+Back up the current plugins folder:
+
+cp ./plugins ../plugins_bk_$(date +%F_%T) -r
+
+
+Download the script repository jenkins_scripts.
+
+Go to the plugins subfolder.
+
+Run the download script:
+
+./download.sh
+
+
+Start Jenkins:
+
+systemctl --user start jenkins
+
+
+
+
+
+
+
+
